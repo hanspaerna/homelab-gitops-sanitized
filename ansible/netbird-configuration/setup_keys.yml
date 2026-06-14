@@ -1,0 +1,74 @@
+netbird_setup_keys:
+  - name: "k3s-int"
+    key_type: "one-off"
+    expires_in: 3600
+    auto_groups:
+      - "Infra"
+      - "Reverse Proxy (Int)"
+    usage_limit: 1
+    ephemeral: false
+    state: present
+
+  - name: "k3s-ext"
+    key_type: "one-off"
+    expires_in: 3600
+    auto_groups:
+      - "Infra"
+      - "Reverse Proxy (Ext)"
+    usage_limit: 1
+    ephemeral: false
+    state: present
+
+  - name: "router"
+    key_type: "one-off"
+    expires_in: 3600
+    auto_groups:
+      - "Router"
+    usage_limit: 1
+    ephemeral: false
+    state: present
+
+  - name: "pve"
+    key_type: "one-off"
+    expires_in: 3600
+    auto_groups:
+      - "Infra"
+    usage_limit: 1
+    ephemeral: false
+    state: present
+
+  - name: "truenas"
+    key_type: "one-off"
+    expires_in: 3600
+    auto_groups:
+      - "Infra"
+    usage_limit: 1
+    ephemeral: false
+    state: present
+
+  - name: "my-desktop-clients"
+    key_type: "reusable"
+    expires_in: 3600
+    auto_groups:
+      - "My Desktop Clients"
+    usage_limit: 2
+    ephemeral: false
+    state: present
+
+  - name: "my-mobile-clients"
+    key_type: "one-off"
+    expires_in: 3600
+    auto_groups:
+      - "My Mobile Clients"
+    usage_limit: 1
+    ephemeral: false
+    state: present
+
+  - name: "kot-mobile-clients"
+    key_type: "one-off"
+    expires_in: 3600
+    auto_groups:
+      - "Kot's Mobile Clients"
+    usage_limit: 1
+    ephemeral: false
+    state: present

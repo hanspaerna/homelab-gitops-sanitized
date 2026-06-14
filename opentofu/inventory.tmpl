@@ -1,0 +1,28 @@
+all:
+  vars:
+    ansible_user: ${cloud_init_username}
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no
+    k3s_version: ${k3s_version}
+    k3s_token: ${k3s_token}
+    github_username: ${github_username}
+    github_token: ${github_token}
+
+    netbird_api_url: "https://netbird.lab.com"
+    netbird_api_token: REPLACE_WITH_YOUR_NETBIRD_API_TOKEN
+    netbird_network_range: "100.116.0.0/16"
+    netbird_int_cluster_ip: "100.116.56.43"
+
+k3s:
+  children:
+    control_plane:
+      hosts:
+%{ for index, hostname in control_plane_hostnames ~}
+        ${hostname}:
+          ansible_host: ${control_plane_ips[index]}
+%{endfor ~}
+
+    control_plane_external:
+      hosts:
+        ${control_plane_external_hostname}:
+          ansible_host: ${control_plane_external_ip}
+

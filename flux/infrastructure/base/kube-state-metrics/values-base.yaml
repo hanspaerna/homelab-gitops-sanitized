@@ -1,0 +1,8 @@
+prometheusScrape: true
+
+service:
+  port: 8080
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"  # must match service.port

@@ -1,0 +1,9 @@
+name: my/whitelists
+description: "Whitelist legitimate sources"
+whitelist:
+  reason: "Legitimate services with unusual traffic patterns"
+  expression:
+    # Don't block clients that have Netbird VPN connection interrupted and receiving 403 hundreds of times
+    - "evt.Meta.target_fqdn == 'netbird.lab.com' && evt.Meta.http_status == '403'"
+    # Q3JS clients make lots of HEAD requests when comparing local game files with remote; this is fine
+    - "evt.Meta.target_fqdn == 'q3.lab.com' && evt.Meta.http_verb == 'HEAD'"

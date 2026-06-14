@@ -1,0 +1,102 @@
+- import_playbook: netbird-apply.yml
+
+# Keys must be deleted first in the UI in order to appear again in netbird-setup-keys.txt
+# This is because we, for security reasons, don't want to re-create active keys if there are some expired/used already in the system.
+# Keys that were created in past (even if not used/expired) cannot be retrieved (they are partially hidden, length <= 9).
+# k3s-int and k3s-ext keys must always be removed via UI before running this playbook, if they are already there for some reason.
+- name: Create NetBird setup keys for int cluster
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Set k3s-int setup key
+      set_fact:
+        setup_key_int: "{{ netbird_setup_key_results.results | json_query('[?setup_key.name==`k3s-int`].setup_key | [0].key') }}"
+
+    - name: Abort if setup key is hidden
+      assert:
+        that:
+          - setup_key_int | length > 9
+        fail_msg: "Setup key for k3s-int appears to be hidden (length is 9 or less). This means you have to delete the setup key manually before continuing."
+
+    - name: Read secret template
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/templates/nb-setupkey-secret-template.yaml"
+      register: secret_template
+
+    - name: Substitute setup key in template
+      ansible.builtin.set_fact:
+        secret_manifest_int: "{{ (secret_template.content | b64decode) | regex_replace('INSERT-SOME-KEY', setup_key_int) }}"
+
+    - name: Apply secret to internal cluster
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        {{ secret_manifest_int }}
+        EOF
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-internal"
+      register: int_result
+      changed_when: "'created' in int_result.stdout or 'configured' in int_result.stdout"
+
+    - name: Display results
+      ansible.builtin.debug:
+        msg:
+          - "Internal cluster: {{ int_result.stdout }}"
+          - "Setup key has been applied to internal cluster"
+
+
+- name: Create NetBird setup keys for ext cluster
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Set k3s-ext setup key
+      set_fact:
+        setup_key_ext: "{{ netbird_setup_key_results.results | json_query('[?setup_key.name==`k3s-ext`].setup_key | [0].key') }}"
+
+    - name: Abort if setup key is hidden
+      assert:
+        that:
+          - setup_key_ext | length > 9
+        fail_msg: "Setup key for k3s-ext appears to be hidden (length is 9 or less). This means you have to delete the setup key manually before continuing."
+
+    - name: Read secret template
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/templates/nb-setupkey-secret-template.yaml"
+      register: secret_template
+
+    - name: Substitute setup key in template
+      ansible.builtin.set_fact:
+        secret_manifest_ext: "{{ (secret_template.content | b64decode) | regex_replace('INSERT-SOME-KEY', setup_key_ext) }}"
+
+    - name: Apply secret to external cluster
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        {{ secret_manifest_ext }}
+        EOF
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: ext_result
+      changed_when: "'created' in ext_result.stdout or 'configured' in ext_result.stdout"
+
+    - name: Write setup key block to file
+      blockinfile:
+        path: "{{ playbook_dir }}/netbird-setup-keys.txt"
+        prepend_newline: true
+        create: true
+        marker: "# --- {mark} {{ result.setup_key.name }} ---"
+        block: |
+          name: {{ result.setup_key.name }}
+          key: {{ result.setup_key.key }}
+          usage_limit: {{ result.setup_key.usage_limit }}
+          expires: {{ result.setup_key.expires }}
+      loop: "{{ netbird_setup_key_results.results }}"
+      loop_control:
+        loop_var: result
+      when: result.setup_key.key | length > 9
+
+    - name: Display results
+      ansible.builtin.debug:
+        msg:
+          - "Internal cluster: {{ ext_result.stdout }}"
+          - "Setup key has been applied to external cluster"

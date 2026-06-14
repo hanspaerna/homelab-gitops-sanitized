@@ -1,0 +1,55 @@
+netbird_policies:
+  - name: "hans-mobile-powersave"
+    description: "Reduce the number of reachable peers from smartphone to stop battery draining."
+    enabled: true
+    rules:
+      - name: "hans-mobile-powersave"
+        description: "Reduce the number of reachable peers from smartphone to stop battery draining."
+        sources:
+          - My Mobile Clients
+        destinations:
+          - Reverse Proxy (Int)
+          - Router
+        bidirectional: false
+        protocol: "all"
+        action: "accept"
+    state: present
+  - name: "kot-mobile-powersave"
+    description: "Reduce the number of reachable peers from smartphne to stop battery draining."
+    enabled: true
+    rules:
+      - name: "kot-mobile-powersave"
+        description: "Reduce the number of reachable peers from smartphne to stop battery draining."
+        sources:
+          - Kot's Mobile Clients
+        destinations:
+          - Reverse Proxy (Int)
+        bidirectional: false
+        protocol: "all"
+        action: "accept"
+    state: present
+  - name: "my-desktop-clients-allow-all"
+    enabled: true
+    rules:
+      - name: "my-desktop-clients-allow-all"
+        sources:
+          - My Desktop Clients
+        destinations:
+          - Infra
+          - My Desktop Clients
+        bidirectional: false
+        protocol: "all"
+        action: "accept"
+    state: present
+  - name: "revproxies"
+    enabled: true
+    rules:
+      - name: "revproxies"
+        sources:
+          - Reverse Proxy (Ext)
+        destinations:
+          - Reverse Proxy (Int)
+        bidirectional: true
+        protocol: "all"
+        action: "accept"
+    state: present

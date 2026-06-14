@@ -1,0 +1,56 @@
+namespace: netbird
+
+resources:
+  - ../../base/netbird/
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - grpcroute.yaml
+  - httproute.yaml
+
+images:
+  - name: netbirdio/management
+    newTag: 0.71.4
+  - name: netbirdio/relay
+    newTag: 0.71.4
+  - name: netbirdio/signal
+    newTag: 0.71.4
+
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: netbird-management
+    path: management-env-patch.yaml
+
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: netbird-relay
+    path: relay-env-patch.yaml
+
+
+  # this Service patch is needed because there is a discrepancy between port names for TCP/33080 in Helm chart.
+  # It is called "http" in one place and "websocket" in another.
+  - target:
+      version: v1
+      kind: Service
+      name: netbird-relay
+    patch: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: netbird-relay
+        namespace: netbird
+      spec:
+        ports:
+          - port: 33080
+            targetPort: websocket
+            protocol: TCP
+            name: websocket
+          - port: 9090
+            targetPort: metrics
+            protocol: TCP
+            name: metrics

@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: netbird-management
+data:
+  management.tmpl.json: |-
+    {
+        "Stuns": [
+            {
+                "Proto": "udp",
+                "URI": "${NETBIRD_STUN_URI}",
+                "Username": "${NETBIRD_COTURN_USERNAME}",
+                "Password": "${NETBIRD_COTURN_PASSWORD}"
+            }
+        ],
+        "Relay": {
+            "Addresses": ["rels://${NETBIRD_RELAY_DOMAIN}:${NETBIRD_RELAY_PORT}"],
+            "CredentialsTTL": "24h",
+            "Secret": "${NETBIRD_RELAY_AUTH_SECRET}"
+        },
+        "StoreConfig": {
+            "Engine": "${NETBIRD_STORE_CONFIG_ENGINE}"
+        },
+        "Signal": {
+            "Proto": "${NETBIRD_SIGNAL_PROTOCOL}",
+            "URI": "${NETBIRD_SIGNAL_URI}",
+            "Username": "",
+            "Password": null
+        },
+        "Datadir": "",
+        "HttpConfig": {
+            "Address": "0.0.0.0:80",
+            "AuthIssuer": "${CUSTOM_NETBIRD_AUTH_ISSUER}",
+            "AuthAudience": "netbird",
+            "AuthKeysLocation": "${CUSTOM_NETBIRD_AUTH_KEYS_LOCATION}",
+            "AuthUserIDClaim": "${NETBIRD_AUTH_USER_ID_CLAIM}",
+            "CertFile": "",
+            "CertKey": "",
+            "IdpSignKeyRefreshEnabled": true,
+            "OIDCConfigEndpoint": "${NETBIRD_AUTH_OIDC_CONFIGURATION_ENDPOINT}"
+        },
+        "IdpManagerConfig": {
+        },
+        "DeviceAuthorizationFlow": {
+        },
+        "PKCEAuthorizationFlow": {
+            "ProviderConfig": {
+                "Audience": "netbird",
+                "ClientID": "netbird",
+                "ClientSecret": "${CUSTOM_NETBIRD_PKCE_CLIENT_SECRET}",
+                "Domain": "",
+                "AuthorizationEndpoint": "${CUSTOM_NETBIRD_PKCE_AUTH_ENDPOINT}",
+                "TokenEndpoint": "${CUSTOM_NETBIRD_PKCE_TOKEN_ENDPOINT}",
+                "Scope": "openid profile email",
+                "RedirectURLs": [
+                    "http://localhost:53000"
+                ],
+                "UseIDToken": true
+            }
+        }
+    }

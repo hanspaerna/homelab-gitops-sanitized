@@ -1,0 +1,36 @@
+---
+- name: Preflight checks
+  hosts: localhost
+  gather_facts: false
+  vars:
+    netbird_collection_version: "1.2.0"
+  tasks:
+    - name: Check if community.ansible_netbird collection is installed
+      command: ansible-galaxy collection list community.ansible_netbird
+      register: collection_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Install community.ansible_netbird from local archive
+      command: ansible-galaxy collection install ./collections/community-ansible_netbird-{{ netbird_collection_version }}.tar.gz
+      register: collection_install
+      when: >
+        collection_check.rc != 0 or
+        not (collection_check.stdout | regex_search('community\.ansible_netbird\s+' + netbird_collection_version + '\s*$', multiline=True))
+      changed_when:
+        - collection_install is not skipped
+
+    - name: Check netbird_api_token is set
+      ansible.builtin.fail:
+        msg: "Please set netbird_api_token in inventory.tf.yml"
+      when: netbird_api_token is not defined or netbird_api_token == 'REPLACE_WITH_YOUR_NETBIRD_API_TOKEN'
+
+- hosts: localhost
+  vars:
+    config_dir: "./netbird-configuration"
+    strict: true # removes all the resources that are missing from declarative configuration in the repo
+    commit: true
+  collections:
+    - community.ansible_netbird
+  roles:
+    - community.ansible_netbird.configure

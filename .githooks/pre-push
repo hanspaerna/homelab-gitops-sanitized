@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+LOCAL_SHA="$(git rev-parse HEAD)"
+REMOTE_SHA="$(git ls-remote origin refs/heads/main | cut -f1)"
+
+# we don't need to run the hook if there is no difference between remote and local branches, i.e. nothing to push
+if [[ "$LOCAL_SHA" == "$REMOTE_SHA" ]]; then
+  exit 0
+fi
+
+PLACEHOLDER='# This file is encrypted and not included in the public mirror.'
+
+SANITIZED_FILES=(
+  -name "secrets.yaml"
+  -o -name "users-database.yaml"
+  -o -name "secret.yaml"
+  -o -path "./flux/apps/int/ottrbox/configmap.yaml"
+  -o -path "./flux/apps/int/slskd/configmap.yaml"
+)
+
+REPO_TOP_LEVEL="$(git rev-parse --show-toplevel)"
+PUBLIC_REMOTE="https://git.vpn.lab.com/user01/homelab-gitops-sanitized.git"
+REPLACEMENTS_FILE="$REPO_TOP_LEVEL/sanitized-values.txt"
+WORK_DIR="$(mktemp -d)"
+
+trap 'rm -rf "$WORK_DIR"' EXIT
+
+REMOTE_NAME="$1"
+if [[ "$REMOTE_NAME" != "origin" ]]; then
+  exit 0
+fi
+
+echo "[sanitized-mirror-hook] preparing sanitized public mirror..."
+
+git clone --no-local "$REPO_TOP_LEVEL" "$WORK_DIR/repo" >/dev/null 2>&1 # --no-local prevents default hardlinking of .git folder and protects main repo
+cd "$WORK_DIR/repo"
+
+echo "# Format: find|replace (case-insensitive, one per line, # for comments)" > "sanitized-values.txt"
+
+find . \( "${SANITIZED_FILES[@]}" \) \
+  -not -path "./.git/*" \
+  -exec sh -c 'printf "%s\n" "$1" > "$2"' _ "$PLACEHOLDER" {} \;
+
+find container-data/ext container-data/int -mindepth 1 -delete
+touch container-data/ext/.gitkeep
+touch container-data/int/.gitkeep
+
+if [[ -f "$REPLACEMENTS_FILE" ]]; then
+  while IFS="|" read -r find replace; do
+    [[ -z "$find" || "$find" == \#* ]] && continue
+    grep -iFrl "$find" . \
+      | grep -v "^./.git/" \
+      | xargs --no-run-if-empty grep -iFlI "$find" \
+      | xargs --no-run-if-empty perl -pi -e "s|\Q${find}\E|${replace}|gi"
+  done < "$REPLACEMENTS_FILE"
+fi
+
+# remove "age" public key from .sops.yaml; it is always in the root of the project, no need to look for it recursively
+perl -pi -e 'if (/age:/) { $skip = 1 } elsif ($skip) { $_ = "      <your_age_public_key>\n"; $skip = 0 }' .sops.yaml
+
+COMMIT_MSG="snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+git checkout --orphan publish >/dev/null 2>&1 # created a branch detached from repo's history
+git add -A >/dev/null 2>&1
+git commit -m "$COMMIT_MSG" >/dev/null 2>&1
+
+git remote add public "$PUBLIC_REMOTE"
+git push public publish:main --force >/dev/null 2>&1
+
+echo "[sanitized-mirror-hook] public mirror sanitized and updated"

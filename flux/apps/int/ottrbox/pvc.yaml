@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ottrbox-data-pvc
+  labels:
+    app.kubernetes.io/name: ottrbox
+    app.kubernetes.io/instance: ottrbox
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

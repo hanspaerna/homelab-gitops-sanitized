@@ -1,0 +1,6 @@
+netbird_settings:
+  regular_users_view_blocked: true
+  auto_update_always: false
+  peer_expose_enabled: false
+  lazy_connection_enabled: false
+  network_range: "{{ netbird_network_range }}"

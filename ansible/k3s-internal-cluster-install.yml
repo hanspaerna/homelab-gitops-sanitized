@@ -1,0 +1,162 @@
+---
+- name: Ensure binary is installed on the local machine
+  hosts: localhost
+  become: false
+  tasks:
+    - name: Check if kubectl binary is available in PATH
+      ansible.builtin.command:
+        cmd: which kubectl
+      register: result
+      failed_when: result.rc != 0
+
+- name: Install K3s on Control Plane
+  hosts: control_plane
+  become: true
+  tasks:
+    - name: check K3S_TOKEN is not empty
+      ansible.builtin.debug:
+        msg: "{{ k3s_token }}"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+        state: present
+
+    - name: Download K3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: '0755'
+
+    - name: Install K3s server
+      ansible.builtin.shell: |
+        INSTALL_K3S_VERSION={{ k3s_version }} \
+        K3S_TOKEN={{ k3s_token }} \
+        sh /tmp/k3s-install.sh server \
+          --cluster-init \
+          --write-kubeconfig-mode=644 \
+          --tls-san={{ ansible_host }} \
+          --tls-san={{ netbird_int_cluster_ip }} \
+          --node-name={{ inventory_hostname }} \
+          --cluster-cidr=10.42.0.0/16 \
+          --service-cidr=10.43.0.0/16 \
+          --disable=traefik \
+          --disable=servicelb
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for K3s to be ready
+      ansible.builtin.wait_for:
+        port: 6443
+        delay: 5
+        timeout: 300
+
+    - name: Get K3s node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: node_token
+
+    - name: Save node token
+      ansible.builtin.set_fact:
+        k3s_node_token: '{{ node_token.content | b64decode | trim }}'
+
+    - name: Display control plane status
+      ansible.builtin.command: kubectl get nodes
+      register: nodes_status
+      changed_when: false
+
+    - name: Show nodes
+      ansible.builtin.debug:
+        var: nodes_status.stdout_lines
+
+- name: Verify Cluster
+  hosts: control_plane
+  become: true
+  tasks:
+    - name: Wait for all nodes to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready nodes --all --timeout=300s
+      register: wait_result
+      retries: 5
+      delay: 10
+      until: wait_result.rc == 0
+      changed_when: false
+
+    - name: Get cluster info
+      ansible.builtin.command: kubectl get nodes -o wide
+      register: cluster_info
+      changed_when: false
+
+    - name: Display cluster info
+      ansible.builtin.debug:
+        var: cluster_info.stdout_lines
+
+    - name: Get kubeconfig
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: kubeconfig_content
+
+    - name: Save kubeconfig locally
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        content: '{{ kubeconfig_content.content | b64decode |
+          regex_replace(''127.0.0.1'', hostvars[groups[''control_plane''][0]][''ansible_host'']) }}'
+        dest: '{{ playbook_dir }}/../.kubeconfig-internal'
+        mode: '0600'
+
+    - name: Install Gateway API's CRDs
+      delegate_to: localhost
+      become: false
+      environment:
+        - KUBECONFIG: '{{ playbook_dir }}/../.kubeconfig-internal'
+      ansible.builtin.command:
+        cmd: kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml --force-conflicts
+
+    - name: Display success message
+      ansible.builtin.debug:
+        msg:
+          - K3s cluster is ready!
+          - 'Control plane: {{ ansible_host }}'
+          - 'Kubeconfig saved to: {{ playbook_dir }}/../.kubeconfig-internal'
+          - 'Use: export KUBECONFIG={{ playbook_dir }}/../.kubeconfig-internal'
+
+- name: Flux CD setup new cluster
+  hosts: control_plane
+  become: false
+  vars:
+    fluxcd_kubernetes:
+      config_path: "{{ playbook_dir }}/../.kubeconfig-internal"
+    fluxcd_bootstrap:
+      repository_type: "github"
+      github_user: "{{ github_username }}"
+      github_token: "{{ github_token }}"
+      repo_owner: "{{ github_username }}"
+      repo_name: "HOMELAB-gitops"
+      repo_branch: "main"
+      k8s_cluster_name: "ext"
+      cluster_conf_path: "./flux/clusters/int"
+  roles:
+    - name: Flux Bootstrap
+      role: fluxcd-bootstrap
+      run_once: true
+  tags: fluxcd
+
+- name: Install Age-SOPS secret into cluster
+  hosts: localhost
+  become: false
+  tasks:
+    - name: (Re-)create sops-age secret resource
+      ansible.builtin.shell: |
+        kubectl delete secret sops-age --namespace=flux-system --ignore-not-found
+        cat ../age.agekey | kubectl create secret generic sops-age --namespace=flux-system --from-file=age.agekey=/dev/stdin
+      environment:
+        - KUBECONFIG: '{{ playbook_dir }}/../.kubeconfig-internal'

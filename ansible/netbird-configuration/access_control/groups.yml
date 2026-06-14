@@ -1,0 +1,15 @@
+netbird_groups:
+  - name: "Infra"
+    state: present
+  - name: "Kot's Mobile Clients"
+    state: present
+  - name: "My Desktop Clients"
+    state: present
+  - name: "My Mobile Clients"
+    state: present
+  - name: "Reverse Proxy (Ext)"
+    state: present
+  - name: "Reverse Proxy (Int)"
+    state: present
+  - name: "Router"
+    state: present

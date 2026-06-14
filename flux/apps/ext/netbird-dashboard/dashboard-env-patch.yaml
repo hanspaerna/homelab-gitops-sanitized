@@ -1,0 +1,30 @@
+- op: replace
+  path: /spec/template/spec/containers/0/env
+  value:
+    - name: AUTH_AUDIENCE
+      value: "none"
+    - name: AUTH_AUTHORITY
+      value: "https://auth.lab.com"
+    - name: AUTH_CLIENT_ID
+      value: "netbird"
+    - name: AUTH_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: netbird-dashboard-secret
+          key: netbird-auth-client-secret-key
+    - name: AUTH_SUPPORTED_SCOPES
+      value: "openid profile email"
+    - name: AUTH_REDIRECT_URI
+      value: "/callback"
+    - name: AUTH_SILENT_REDIRECT_URI
+      value: "/silent-callback"
+    - name: NETBIRD_TOKEN_SOURCE
+      value: "idToken"
+    - name: USE_AUTH0
+      value: "false"
+    - name: NETBIRD_MGMT_API_ENDPOINT
+      value: "https://netbird.lab.com"
+    - name: NETBIRD_MGMT_GRPC_API_ENDPOINT
+      value: "https://netbird.lab.com"
+    - name: NGINX_SSL_PORT
+      value: "443"

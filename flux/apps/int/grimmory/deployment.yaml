@@ -1,0 +1,97 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grimmory
+  labels:
+    app.kubernetes.io/instance: grimmory
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grimmory
+      app.kubernetes.io/instance: grimmory
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: grimmory
+        app.kubernetes.io/instance: grimmory
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: grimmory
+          image: "ghcr.io/grimmory-tools/grimmory:v3.2.0"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_URL
+              value: "jdbc:mariadb://localhost:3306/grimmory"
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: grimmory-secret
+                  key: DB_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grimmory-secret
+                  key: DB_PASSWORD
+            - name: SWAGGER_ENABLED
+              value: "false"
+            - name: FORCE_DISABLE_OIDC
+              value: "false"
+          ports:
+            - name: http
+              containerPort: 6060
+              protocol: TCP
+          volumeMounts:
+            - name: books
+              mountPath: /books
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+
+        - name: mariadb
+          image: "lscr.io/linuxserver/mariadb:11.4.8"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grimmory-secret
+                  key: DB_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: "grimmory"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grimmory-secret
+                  key: DB_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grimmory-secret
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config-pvc
+        - name: books
+          persistentVolumeClaim:
+            claimName: books-pvc

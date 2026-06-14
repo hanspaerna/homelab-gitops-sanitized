@@ -1,0 +1,37 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route
+  namespace: netbird
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-ext
+  hostnames:
+    - "netbird.lab.com"
+  rules:
+    - matches:
+        - method:
+            service: management.ManagementService
+      backendRefs:
+        - name: netbird-management
+          port: 80
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: middleware-chain # defined in netbird-dashboard/middlewares.yaml
+
+    - matches:
+        - method:
+            service: signalexchange.SignalExchange
+      backendRefs:
+        - name: netbird-signal
+          port: 80
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: middleware-chain

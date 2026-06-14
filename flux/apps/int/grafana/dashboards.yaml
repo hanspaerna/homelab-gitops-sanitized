@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-kubernetes
+  labels:
+    grafana_dashboard: "1"
+data:
+  kubernetes-pods.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": false,
+      "title": "Kubernetes Pods",
+      "uid": "k8s-pods",
+      "panels": [
+        {
+          "title": "CPU Usage by Pod (int)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (pod, namespace)",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ],
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"}
+        },
+        {
+          "title": "Memory Usage by Pod (int, MB)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (pod, namespace) / 1024 / 1024",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "MB"}},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"}
+        },
+        {
+          "title": "CPU Usage by Pod (ext)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (pod, namespace)",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ],
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-ext"}
+        },
+        {
+          "title": "Memory Usage by Pod (ext, MB)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (pod, namespace) / 1024 / 1024",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "MB"}},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-ext"}
+        }
+      ],
+      "schemaVersion": 39,
+      "version": 1
+    }

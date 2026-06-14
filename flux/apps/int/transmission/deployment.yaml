@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transmission
+  labels:
+    app.kubernetes.io/name: transmission
+    app.kubernetes.io/instance: transmission
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: transmission
+      app.kubernetes.io/instance: transmission
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: transmission
+        app.kubernetes.io/instance: transmission
+    spec:
+      initContainers:
+        - name: gluetun
+          image: qmcgaw/gluetun:v3.41
+          # restartPolicy: Always makes gluetun a native sidecar
+          # if you do not add restartPolicy the other init containers will never start
+          # it will be an initContainer and not a native sidecar container https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+          restartPolicy: Always
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              valueFrom:
+                secretKeyRef:
+                  name: transmission-secret
+                  key: VPN_SERVICE_PROVIDER
+            - name: VPN_TYPE
+              valueFrom:
+                secretKeyRef:
+                  name: transmission-secret
+                  key: VPN_TYPE
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: transmission-secret
+                  key: WIREGUARD_PRIVATE_KEY
+            - name: SERVER_COUNTRIES
+              valueFrom:
+                secretKeyRef:
+                  name: transmission-secret
+                  key: SERVER_COUNTRIES
+            - name: UPDATER_PERIOD
+              value: "24h"
+            - name: BLOCK_MALICIOUS
+              value: "off"
+            - name: PORT_FORWARD_ONLY
+              value: "on"
+            - name: VPN_PORT_FORWARDING
+              value: "on"
+            - name: VPN_PORT_FORWARDING_UP_COMMAND
+              value: /bin/sh -c 'apk add transmission-remote && transmission-remote localhost --auth admin:admin -p {{PORTS}} && transmission-remote localhost --auth admin:admin -t all --reannounce'
+            - name: FIREWALL_VPN_INPUT_PORTS
+              value: "9091"
+            # Killswitch settings
+            - name: FIREWALL
+              value: "on"
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "10.42.0.0/16,10.43.0.0/16"  # K3s pod and service CIDRs
+            - name: DOT
+              value: "off"
+          ports:
+            - containerPort: 9091 # transmission web ui
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            exec:
+              command:
+                - /gluetun-entrypoint
+                - healthcheck
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /gluetun-entrypoint
+                - healthcheck
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+      containers:
+        - name: transmission
+          image: linuxserver/transmission:4.1.1
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: USER
+              value: "admin"
+            - name: PASS
+              value: "admin"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+            - name: watch
+              mountPath: /watch
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: transmission-config-pvc
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-pvc
+        - name: watch
+          emptyDir: {}

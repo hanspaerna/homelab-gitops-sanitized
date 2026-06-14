@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: glance-config
+  labels:
+    app.kubernetes.io/name: glance
+data:
+  glance.yml: |
+    server:
+      port: 8080
+ 
+    theme:
+      background-color: 240 21 15
+      primary-color: 217 92 83
+      contrast-multiplier: 1.2
+ 
+    pages:
+      - name: HOMELAB-02
+        columns:
+          - size: full
+            widgets:
+              - type: monitor
+                cache: 1m
+                title: Internal services
+                sites:
+                  - title: k3s-int Traefik
+                    url: https://traefik.vpn.lab.com
+                  - title: Grafana
+                    url: https://grafana.vpn.lab.com
+                  - title: HOMELAB Drive
+                    url: https://drive.vpn.lab.com
+                  - title: ASTL
+                    url: https://astl.vpn.lab.com
+                  - title: Garage S3
+                    url: https://s3.vpn.lab.com
+                  - title: TrueNAS
+                    url: https://truenas.vpn.lab.com
+                  - title: Home Assistant
+                    url: https://homeassistant.vpn.lab.com
+                  - title: PVE
+                    url: https://pve.vpn.lab.com
+                  - title: Jellyfin
+                    url: https://jellyfin.vpn.lab.com
+                  - title: Stash
+                    url: https://stash.vpn.lab.com
+                  - title: Forgejo
+                    url: https://git.vpn.lab.com
+                  - title: Immich
+                    url: https://immich.vpn.lab.com
+                  - title: Vaultwarden
+                    url: https://vaultwarden.vpn.lab.com
+                  - title: Linkwarden
+                    url: https://bookmarks.vpn.lab.com
+                  - title: Navidrome
+                    url: https://navidrome.vpn.lab.com
+                  - title: MDRM (id3 tags)
+                    url: https://mdrm.vpn.lab.com
+                  - title: Transmission
+                    url: https://torrent.vpn.lab.com
+                    alt-status-codes:
+                      - 401
+                  - title: slskd
+                    url: https://slskd.vpn.lab.com
+                  - title: Radicale
+                    url: https://radicale.vpn.lab.com
+                    alt-status-codes:
+                      - 401
+                  - title: ntfy
+                    url: https://ntfy.vpn.lab.com/v1/health
+                  - title: Radarr
+                    url: https://radarr.vpn.lab.com
+                  - title: Sonarr
+                    url: https://sonarr.vpn.lab.com
+                  - title: Bazarr
+                    url: https://bazarr.vpn.lab.com
+                  - title: Prowlarr
+                    url: https://prowlarr.vpn.lab.com
+                  - title: Profilarr
+                    url: https://profilarr.vpn.lab.com
+                  - title: Watcharr
+                    url: https://watcharr.vpn.lab.com
+              
+              - type: monitor
+                cache: 1m
+                title: External services
+                sites:
+                  - title: k3s-ext Traefik
+                    url: https://traefik.lab.com
+                    alt-status-codes:
+                      - 401
+                  - title: Authelia
+                    url: https://auth.lab.com
+                  - title: NetBird
+                    url: https://netbird.lab.com
+                  - title: Koito
+                    url: https://scrob.lab.com
+                  - title: OttrBox
+                    url: https://filesharing.lab.com
+                  - title: Q3JS-KOB
+                    url: https://q3.lab.com
+                    alt-status-codes:
+                      - 401

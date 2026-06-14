@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netbird-router
+  namespace: netbird-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netbird-router
+  template:
+    metadata:
+      labels:
+        app: netbird-router
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: netbird
+          image: netbirdio/netbird:0.71.4
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          env:
+            - name: NB_MANAGEMENT_URL
+              value: "https://netbird.lab.com"
+            - name: NB_HOSTNAME
+              value: "k3s-ext"
+            - name: NB_SETUP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: netbird-setup-key
+                  key: key
+                  optional: true
+            - name: NB_LOG_LEVEL
+              value: "info"
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "netbird status | grep -q 'Management: Connected' && netbird status | grep -q 'Signal: Connected'"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: netbird-client
+              mountPath: /var/lib/netbird
+      volumes:
+        - name: netbird-client
+          persistentVolumeClaim:
+            claimName: netbird-client-pvc

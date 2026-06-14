@@ -1,0 +1,8 @@
+namespace: glance
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - configmaps.yaml
+  - services.yaml
+  - httproute.yaml
