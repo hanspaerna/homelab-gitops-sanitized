@@ -1,0 +1,12 @@
+namespace: kitchenowl
+
+resources:
+  - ../../../shared-resources/k8up-secret/
+  - ../../../shared-resources/k8up-prebackup/
+  - namespace.yaml
+  - deployment.yaml
+  - storage.yaml
+  - svc.yaml
+  - httproute.yaml
+  - secrets.yaml
+  - backup.yaml

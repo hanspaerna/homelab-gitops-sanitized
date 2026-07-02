@@ -1,0 +1,170 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: traefik-ext
+resources:
+  - namespace.yaml
+  - gateway.yaml
+  - gatewayclass.yaml
+  - rbac.yaml
+  - dashboard.yaml
+  - pvc.yaml
+  - middlewares.yaml
+  - grants.yaml
+  - secrets.yaml
+  - ../../base/traefik/
+  - vpn-proxies/ # create a YAML for any internal website that needs to be exposed to the public internet in this folder
+
+patches:
+  # we bind Traefik directly to host network, no need for a Service
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: traefik
+        namespace: traefik
+
+  # we use securityContext block from Deployment resource level
+  # rootless binding to :80 and :443 on host does not work, so we'll define a root access
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: traefik
+        namespace: traefik
+      spec:
+        template:
+          spec:
+            containers:
+            - name: traefik
+              securityContext:
+                $patch: delete
+
+  # "rollingUpdate" block is forbidden when "Recreate" strategy is used
+  # RollingUpdate is disabled because it leads to two pods fighting for host's ports
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: traefik
+        namespace: traefik
+      spec:
+        strategy:
+          rollingUpdate:
+            $patch: delete
+
+
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: traefik
+        namespace: traefik
+      spec:
+        strategy:
+          type: Recreate 
+        template:
+          spec:
+            hostNetwork: true
+            dnsPolicy: ClusterFirstWithHostNet
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+            nodeSelector:
+              node-role.kubernetes.io/control-plane: "true"
+            tolerations:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+                effect: NoSchedule
+            containers:
+              - name: traefik
+                args:
+                  - "--entryPoints.web.address=:80/tcp"
+                  - "--entryPoints.websecure.address=:443/tcp"
+                  - "--entryPoints.traefik.address=:8080/tcp"
+                  - "--entryPoints.q3js.address=:27960/udp"
+                  - "--entryPoints.web.http.redirections.entrypoint.to=websecure"
+                  - "--entryPoints.web.http.redirections.entrypoint.scheme=https" 
+                  - "--entryPoints.web.http.redirections.entrypoint.permanent=true"
+                  - "--api=true"
+                  - "--api.dashboard=true"
+                  - "--ping=true"
+                  - "--global.sendAnonymousUsage=false"
+                  - "--global.checkNewVersion=false"
+                  - "--providers.kubernetescrd"
+                  - "--providers.kubernetescrd.allowCrossNamespace=true"
+                  - "--providers.kubernetesgateway=true"
+                  - "--providers.kubernetescrd.allowExternalNameServices=true"
+                  - "--accesslog=true"
+                  - "--accesslog.format=json"
+                  - "--entryPoints.metrics.address=:9100/tcp"
+                  - "--metrics.prometheus=true"
+                  - "--metrics.prometheus.entrypoint=metrics"
+                  - "--experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+                  - "--experimental.plugins.bouncer.version=v1.4.6"
+
+                  # Has to be set globally until there is an implementation of this setting in Gateway API's GRPCRoute.
+                  # Without this setting, Netbird clients reconnect to Signal every minute or so.
+                  # TODO: do I really need it since the migration from NetBird to Headscale? 
+                  - "--serverstransport.forwardingTimeouts.responseHeaderTimeout=0s"
+                  - "--entryPoints.websecure.transport.respondingTimeouts.readTimeout=0s"
+                  - "--entryPoints.websecure.transport.respondingTimeouts.writeTimeout=0s"
+                  - "--entryPoints.websecure.transport.respondingTimeouts.idleTimeout=180s"
+                volumeMounts:
+                  - name: plugins-storage
+                    mountPath: /plugins-storage
+                  - name: bouncer-lapi-secret
+                    mountPath: /lapisecret
+                    readOnly: true
+
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: traefik
+        namespace: traefik
+      spec:
+        template:
+          spec:
+            volumes:
+            - $patch: replace
+            - name: data
+              persistentVolumeClaim:
+                claimName: local-path-pvc
+            - name: tmp
+              emptyDir: {}
+            - name: plugins-storage
+              persistentVolumeClaim:
+                claimName: plugins-storage-pvc
+            - name: bouncer-lapi-secret
+              secret:
+                secretName: bouncer-lapi-secret
+
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: traefik
+        namespace: traefik
+      spec:
+        template:
+          spec:
+            containers:
+              - name: traefik
+                ports:
+                - $patch: replace
+                - name: web
+                  containerPort: 80
+                  protocol: TCP
+                - name: websecure
+                  containerPort: 443
+                  protocol: TCP
+                - name: metrics
+                  containerPort: 9100
+                  protocol: TCP
+                - name: traefik
+                  containerPort: 8080
+                  protocol: TCP
+
+ 

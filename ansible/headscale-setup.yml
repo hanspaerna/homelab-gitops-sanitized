@@ -1,0 +1,344 @@
+- name: Configure Headplane
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Check if Headscale namespace on ext already has an API key (skip if the secret already exists in k3s-ext)
+      ansible.builtin.shell: |
+        kubectl get secrets -n headscale | grep headscale-api-key
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: api_key_check_result
+      failed_when: "false"
+      changed_when: "false"
+
+    - name: Generate API key for Headplane
+      when: api_key_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale apikeys create -e 100y
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: api_key_result
+      changed_when: "'created' in api_key_result.stdout or 'configured' in api_key_result.stdout"
+
+    - name: Read API secret's template
+      when: api_key_check_result.stdout == ''
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/templates/headscale-api-key-template.yaml"
+      register: api_secret_template
+
+    - name: Substitute API key in template (k3s-ext)
+      when: api_key_check_result.stdout == ''
+      ansible.builtin.set_fact:
+        api_secret_manifest: "{{ (api_secret_template.content | b64decode) | regex_replace('INSERT-SOME-KEY', api_key_result.stdout) }}"
+
+    - name: Apply a Secret with the API key to ext cluster
+      when: api_key_check_result.stdout == ''
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        {{ api_secret_manifest }}
+        EOF
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: api_secret_apply_result
+      changed_when: "'created' in api_secret_apply_result.stdout or 'configured' in api_secret_apply_result.stdout"
+
+    - name: Force recreate the headscale pod
+      when: api_key_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl rollout restart deployment/headscale -n headscale
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      changed_when: "false"
+
+    - name: Wait for rollout to complete
+      when: api_key_check_result.stdout == ''
+      ansible.builtin.command: kubectl rollout status deployment/headscale -n headscale --timeout=120s
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: rollout_result
+      changed_when: "false"
+
+- name: Add k3s-ext cluster to Tailnet as a node
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Check if k3s-ext node is already in Tailnet
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale nodes list | grep tag:k3s-ext
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: ext_node_check_result
+      failed_when: "ext_node_check_result.stderr != ''"
+      changed_when: "false"
+
+    - name: Generate pre-auth key
+      when: ext_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale preauthkeys create --tags tag:k3s-ext
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: preauth_key_ext_result
+      changed_when: "'hskey-auth-' in preauth_key_ext_result.stdout"
+
+    - name: Read setup key secret's template
+      when: ext_node_check_result.stdout == ''
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/templates/headscale-setup-key-template.yaml"
+      register: preauth_key_secret_template
+
+    - name: Substitute setup key in template
+      when: ext_node_check_result.stdout == ''
+      ansible.builtin.set_fact:
+        preauth_key_ext_manifest: "{{ (preauth_key_secret_template.content | b64decode) | regex_replace('INSERT-SOME-KEY', preauth_key_ext_result.stdout) }}"
+
+    - name: Apply a Secret with the pre-auth key to ext cluster
+      when: ext_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        {{ preauth_key_ext_manifest }}
+        EOF
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: preauth_key_ext_apply_result
+      changed_when: "'created' in preauth_key_ext_apply_result.stdout or 'configured' in preauth_key_ext_apply_result.stdout"
+
+    - name: Force recreate the client pod
+      when: ext_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl rollout restart deployment/tailscale-client -n tailscale-client
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      changed_when: "false"
+
+    - name: Wait for rollout to complete
+      when: ext_node_check_result.stdout == ''
+      ansible.builtin.command: kubectl rollout status deployment/tailscale-client -n tailscale-client --timeout=120s
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: rollout_result
+      changed_when: "false"
+
+- name: Add k3s-int cluster to Tailnet as a node
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Check if k3s-int node is already in Tailnet
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale nodes list | grep tag:k3s-int
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: int_node_check_result
+      failed_when: "int_node_check_result.stderr != ''"
+      changed_when: "false"
+
+    - name: Generate pre-auth key
+      when: int_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale preauthkeys create --tags tag:k3s-int
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: preauth_key_int_result
+      changed_when: "'hskey-auth-' in preauth_key_int_result.stdout"
+
+    - name: Read setup key secret's template
+      when: int_node_check_result.stdout == ''
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/templates/headscale-setup-key-template.yaml"
+      register: preauth_key_secret_template
+
+    - name: Substitute setup key in template
+      when: int_node_check_result.stdout == ''
+      ansible.builtin.set_fact:
+        preauth_key_int_manifest: "{{ (preauth_key_secret_template.content | b64decode) | regex_replace('INSERT-SOME-KEY', preauth_key_int_result.stdout) }}"
+
+    - name: Apply a Secret with the pre-auth key to int cluster
+      when: int_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        {{ preauth_key_int_manifest }}
+        EOF
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-internal-lan"
+      register: preauth_key_int_apply_result
+      changed_when: "'created' in preauth_key_int_apply_result.stdout or 'configured' in preauth_key_int_apply_result.stdout"
+
+    - name: Force recreate the client pod
+      when: int_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl rollout restart deployment/tailscale-client -n tailscale-client
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-internal-lan"
+      changed_when: "false"
+
+    - name: Wait for rollout to complete
+      when: int_node_check_result.stdout == ''
+      ansible.builtin.command: kubectl rollout status deployment/tailscale-client -n tailscale-client --timeout=120s
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-internal-lan"
+      register: rollout_result
+      changed_when: "false"
+
+- name: Change IPs of both clusters to predictable ones
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Wait until k3s-ext node is in Tailnet
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale nodes list | grep tag:k3s-ext
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: ext_node_check_result
+      until: ext_node_check_result != ''
+      retries: 10
+      delay: 30
+      failed_when: "false"
+      changed_when: "false"
+
+    - name: Wait until k3s-int node is in Tailnet
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale nodes list | grep tag:k3s-int
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: int_node_check_result
+      until: int_node_check_result != ''
+      retries: 10
+      delay: 30
+      failed_when: "false"
+      changed_when: "false"
+
+    - name: Check if it's actually needed to modify k3s-ext node
+      ansible.builtin.set_fact:
+        is_ext_ip_incorrect: "{{ '100.64.0.10' not in ext_node_check_result.stdout }}"
+
+    - name: Check if it's actually needed to modify k3s-int node
+      ansible.builtin.set_fact:
+        is_int_ip_incorrect: "{{ '100.64.0.11' not in int_node_check_result.stdout }}"
+
+    - name: Stop Headscale deployment
+      when: is_ext_ip_incorrect or is_int_ip_incorrect
+      ansible.builtin.shell: |
+        kubectl scale --replicas=0 deployment/headscale -n headscale
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: hs_scale_down_result
+      changed_when: "'scaled' in hs_scale_down_result.stdout"
+
+    - name: Overwrite k3s-ext IP values in Headscale's sqlite3 database
+      when: is_ext_ip_incorrect
+      ansible.builtin.command:
+        argv: [
+          kubectl, run, sqlite-hs-tmp, --rm, -it, --restart=Never, --namespace=headscale, "--image=alpine/sqlite:{{ sqlite_pod_version }}",
+          "--overrides={{ sqlite_pod_manifest | to_json | regex_replace('%IPV4%', tailnet_ipv4_k3s_ext) | regex_replace('%IPV6%', tailnet_ipv6_k3s_ext) | regex_replace('%HOSTNAME%', 'k3s-ext') }}"
+        ]
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: sqlite_ext_update_result
+      failed_when: "sqlite_ext_update_result.rc != 0 or 'error' in sqlite_ext_update_result.stdout"
+
+    - name: Overwrite k3s-int IP values in Headscale's sqlite3 database
+      when: is_int_ip_incorrect
+      ansible.builtin.command:
+        argv: [
+          kubectl, run, sqlite-hs-tmp, --rm, -it, --restart=Never, --namespace=headscale, "--image=alpine/sqlite:{{ sqlite_pod_version }}",
+          "--overrides={{ sqlite_pod_manifest | to_json | regex_replace('%IPV4%', tailnet_ipv4_k3s_int) | regex_replace('%IPV6%', tailnet_ipv6_k3s_int) | regex_replace('%HOSTNAME%', 'k3s-int') }}"
+        ]
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: sqlite_int_update_result
+      failed_when: "sqlite_int_update_result.rc != 0 or 'error' in sqlite_int_update_result.stdout"
+
+    - name: Start Headscale deployment
+      when: is_ext_ip_incorrect or is_int_ip_incorrect
+      ansible.builtin.shell: |
+        kubectl scale --replicas=1 deployment/headscale -n headscale
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: hs_scale_up_result
+      changed_when: "'scaled' in hs_scale_up_result.stdout"
+
+    - name: Wait for rollout to complete
+      when: is_ext_ip_incorrect or is_int_ip_incorrect
+      ansible.builtin.command: kubectl rollout status deployment/headscale -n headscale --timeout=120s
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      changed_when: "false"
+
+  vars:
+    sqlite_pod_version: 3.53.2
+    sqlite_pod_manifest:
+      spec:
+        restartPolicy: Never
+        containers:
+          - name: sqlite-hs-tmp
+            image: "alpine/sqlite:{{ sqlite_pod_version }}"
+            imagePullPolicy: IfNotPresent
+            stdin: true
+            tty: true
+            command:
+              - sqlite3
+              - /data/db.sqlite
+              - "UPDATE nodes SET ipv4 = '%IPV4%', ipv6 = '%IPV6%' WHERE hostname = '%HOSTNAME%';"
+            volumeMounts:
+              - name: data
+                mountPath: /data
+        volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: headscale-data
+
+- name: Add wg-easy server to Tailnet as a subnet router node
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Check if wg-easy node is already in Tailnet
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale nodes list | grep tag:wg_easy
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: wg_easy_node_check_result
+      failed_when: "wg_easy_node_check_result.stderr != ''"
+      changed_when: "false"
+
+    - name: Generate pre-auth key
+      when: wg_easy_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl exec -n headscale deploy/headscale -c headscale -- headscale preauthkeys create --tags tag:wg_easy
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: preauth_key_wg_easy_result
+      changed_when: "'hskey-auth-' in preauth_key_wg_easy_result.stdout"
+
+    - name: Read setup key secret's template
+      when: wg_easy_node_check_result.stdout == ''
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/templates/headscale-setup-key-wg-easy-template.yaml"
+      register: preauth_key_secret_template
+
+    - name: Substitute setup key in template
+      when: wg_easy_node_check_result.stdout == ''
+      ansible.builtin.set_fact:
+        preauth_key_wg_easy_manifest: "{{ (preauth_key_secret_template.content | b64decode) | regex_replace('INSERT-SOME-KEY', preauth_key_wg_easy_result.stdout) }}"
+
+    - name: Apply a Secret with the pre-auth key to wg-easy namespace
+      when: wg_easy_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        {{ preauth_key_wg_easy_manifest }}
+        EOF
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      register: preauth_key_wg_easy_apply_result
+      changed_when: "'created' in preauth_key_wg_easy_apply_result.stdout or 'configured' in preauth_key_wg_easy_apply_result.stdout"
+
+    - name: Force recreate the client pod
+      when: wg_easy_node_check_result.stdout == ''
+      ansible.builtin.shell: |
+        kubectl rollout restart deployment/wg-easy -n wg-easy
+      environment:
+        KUBECONFIG: "{{ playbook_dir }}/../.kubeconfig-external"
+      changed_when: "false"

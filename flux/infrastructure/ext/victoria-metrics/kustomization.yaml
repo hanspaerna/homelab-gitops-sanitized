@@ -1,0 +1,15 @@
+namespace: victoria-metrics
+
+resources:
+  - ../../base/victoria-metrics/
+  - httproute.yaml
+  - scrape-config.yaml
+
+patches:
+  - target:
+      kind: StatefulSet
+      name: victoria-metrics-victoria-metrics-single-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args/5
+        value: --retentionPeriod=14d

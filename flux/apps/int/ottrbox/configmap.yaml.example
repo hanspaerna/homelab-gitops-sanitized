@@ -1,0 +1,23 @@
+# Example:
+# config.yaml: |
+#     general:
+#       appName: <ottrbox_custom_name>
+#       appUrl: https://<external_ottrbox_hostname>
+#       showHomePage: "false"
+#       sessionDuration: "3 months"
+#     share:
+#       allowRegistration: "false"
+#       allowUnauthenticatedShares: "false"
+#     oauth:
+#       allowRegistration: "true"
+#       disablePassword: "true"
+#       oidc-enabled: "true"
+#       oidc-signOut: "true"
+#       oidc-discoveryUri: "https://<authelia_host>/.well-known/openid-configuration"
+#       oidc-scope: "openid email profile"
+#       oidc-usernameClaim: "preferred_username"
+#       oidc-roleAdminAccess: "admins"
+#       oidc-clientId: "ottrbox"
+#       oidc-clientSecret: "<authelia_oidc_secret>"
+#       initUser:
+#         enabled: "false"

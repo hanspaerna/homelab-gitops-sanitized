@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stash
+  labels:
+    app.kubernetes.io/instance: stash
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stash
+      app.kubernetes.io/instance: stash
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stash
+        app.kubernetes.io/instance: stash
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: stash
+          image: "stashapp/stash:v0.31.1"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: STASH_CONFIG_FILE
+              value: "/data/config.yml"
+            - name: STASH_PORT
+              value: "8080"
+            - name: STASH_STASH
+              value: "/data/"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+            - name: stash-data
+              mountPath: /data
+            - name: stash-videos
+              mountPath: /videos
+            - name: stash-special
+              mountPath: /special
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: stash-data
+          persistentVolumeClaim:
+            claimName: stash-data-pvc
+        - name: stash-videos
+          persistentVolumeClaim:
+            claimName: videos-pvc
+        - name: stash-special
+          persistentVolumeClaim:
+            claimName: special-pvc

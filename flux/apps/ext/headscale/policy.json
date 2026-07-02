@@ -1,0 +1,62 @@
+{
+  "tagOwners": {
+    "tag:k3s-int": [],
+    "tag:k3s-ext": [],
+    "tag:wg_easy": [],
+    "tag:router": [],
+    "tag:nas": []
+  },
+
+  "groups": {
+    "group:admins": ["user01@"]
+  },
+
+  "autoApprovers": {
+    "routes": {
+      "10.8.0.0/24": [
+        "tag:wg_easy"
+      ]
+    }
+  },
+
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["tag:k3s-ext"],
+      "dst": ["tag:k3s-int:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["tag:k3s-int"],
+      "dst": ["tag:k3s-ext:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["group:admins"],
+      "dst": [
+        "autogroup:tagged:*",
+        "tag:wg_easy:*",
+        "tag:router:*",
+        "tag:nas:*",
+        "group:admins:*"
+      ]
+    },
+    {
+      "action": "accept",
+      "src": ["10.8.0.2"],
+      "dst": [
+        "tag:wg_easy:*",
+        "tag:k3s-ext:*",
+        "tag:k3s-int:*",
+        "tag:router:*",
+        "tag:nas:*",
+        "group:admins:*"
+      ]
+    },
+    {
+      "action": "accept",
+      "src": ["group:admins"],
+      "dst": ["10.8.0.2:*"]
+    }
+  ]
+}

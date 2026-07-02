@@ -1,0 +1,41 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ottrbox-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`filesharing.lab.com`)
+      middlewares:
+      - name: bouncer
+      - name: ottrbox-host-rewrite
+      kind: Rule
+      services:
+      - name: ottrbox-vpn
+        kind: Service
+        scheme: https
+        port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ottrbox-vpn
+spec:
+  type: ExternalName
+  externalName: share.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ottrbox-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: share.vpn.lab.com

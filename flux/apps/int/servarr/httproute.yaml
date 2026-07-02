@@ -1,0 +1,114 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: radarr-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "radarr.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: radarr-svc
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: sonarr-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "sonarr.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: sonarr-svc
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: prowlarr-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "prowlarr.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: prowlarr-svc
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: bazarr-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "bazarr.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: bazarr-svc
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: profilarr-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "profilarr.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: profilarr-svc
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: watcharr-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "watcharr.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: watcharr-svc
+          port: 8080

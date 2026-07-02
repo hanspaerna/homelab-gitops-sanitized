@@ -1,0 +1,141 @@
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headscale
+  labels:
+    app: headscale
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: headscale
+  strategy:
+    type: Recreate   # Required with ReadWriteOnce PVC
+  template:
+    metadata:
+      labels:
+        app: headscale
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      shareProcessNamespace: true
+      containers:
+        - name: headscale
+          image: headscale/headscale:0.29.1  # pin to a specific tag in production
+          imagePullPolicy: IfNotPresent
+          args: ["serve"]
+          env:
+            - name: HEADSCALE_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: headscale-oidc-secret
+                  key: clientSecret
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+            - name: stun
+              containerPort: 3478
+              protocol: UDP
+              hostPort: 30478
+          volumeMounts:
+            - name: headscale-config
+              mountPath: /etc/headscale/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: headscale-acl
+              mountPath: /etc/headscale/policy.json
+              subPath: policy.json
+              readOnly: true
+            - name: headscale-data
+              mountPath: /var/lib/headscale
+            - name: socket-temp # needed to overcome a "creating directory failed with permission error: /var/run/headscale" error
+              mountPath: /var/run/headscale
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+        - name: headplane # Headplane (web management UI) must be in the same pod with Headscale for integration to work properly
+          image: ghcr.io/tale/headplane:0.6.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: ui
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: HEADPLANE_LOAD_ENV_OVERRIDES
+              value: "true"
+            - name: HEADPLANE_OIDC__CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: headscale-oidc-secret
+                  key: clientSecret
+            - name: HEADPLANE_HEADSCALE__API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: headscale-api-key # not a part of the repo, should be applied to ext cluster with Ansible (headscale-setup.yml)
+                  key: key
+                  optional: true
+            - name: HEADPLANE_OIDC__HEADSCALE_API_KEY # duplicating api key for this deprecated value because of an apparent bug
+              valueFrom:
+                secretKeyRef:
+                  name: headscale-api-key
+                  key: key
+                  optional: true
+            - name: HEADPLANE_INTEGRATION__KUBERNETES__POD_NAME # we need to use Downward API to get a dynamic pod name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: headplane-config
+              mountPath: /etc/headplane/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: headscale-config
+              mountPath: /etc/headscale/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: headplane-data
+              mountPath: /var/lib/headplane
+      volumes:
+        - name: headscale-config
+          configMap:
+            name: headscale-config
+        - name: headscale-acl
+          configMap:
+            name: headscale-acl
+        - name: headscale-data
+          persistentVolumeClaim:
+            claimName: headscale-data
+        - name: socket-temp
+          emptyDir: {}
+
+        - name: headplane-config
+          configMap:
+            name: headplane-config
+        - name: headplane-data
+          persistentVolumeClaim:
+            claimName: headplane-data

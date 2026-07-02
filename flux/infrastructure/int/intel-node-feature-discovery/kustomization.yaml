@@ -1,0 +1,19 @@
+resources:
+  - ../../base/intel-node-feature-discovery
+
+patches:
+  - target:
+      kind: DaemonSet
+      name: intel-gpu-plugin
+    patch: |-
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: intel-gpu-plugin
+      spec:
+        template:
+          spec:
+            containers:
+              - name: intel-gpu-plugin
+                args:
+                  - --shared-dev-num=2 # allow multiple workloads to use the same GPU

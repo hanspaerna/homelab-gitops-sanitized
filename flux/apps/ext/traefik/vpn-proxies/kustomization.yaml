@@ -1,0 +1,9 @@
+namespace: traefik-ext
+
+resources:
+  - navidrome.yaml
+  - jellyfin.yaml
+  - koito.yaml
+  - q3server.yaml
+  - ottrbox.yaml
+  - grimmory-kobo.yaml

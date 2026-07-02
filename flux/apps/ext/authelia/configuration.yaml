@@ -1,0 +1,281 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: authelia
+    namespace: authelia
+data:
+    configuration.yaml: |
+        theme: 'oled'
+        default_2fa_method: 'totp'
+        server:
+          address: 'tcp://0.0.0.0:9091/'
+          asset_path: ''
+          headers:
+            csp_template: ""
+          buffers:
+            read: 4096
+            write: 4096
+          timeouts:
+            read: '6 seconds'
+            write: '6 seconds'
+            idle: '30 seconds'
+          endpoints:
+            enable_pprof: false
+            enable_expvars: false
+            authz:
+              auth-request:
+                implementation: 'AuthRequest'
+              ext-authz:
+                implementation: 'ExtAuthz'
+              forward-auth:
+                implementation: 'ForwardAuth'
+                authn_strategies:
+                - name: HeaderAuthorization
+                  schemes:
+                    - Basic
+                - name: CookieSession
+        log:
+          level: 'info'
+          format: 'text'
+          file_path: ''
+          keep_stdout: true
+        telemetry:
+          metrics:
+            enabled: true
+            address: 'tcp://:9959/metrics'
+            buffers:
+              read: 4096
+              write: 4096
+            timeouts:
+              read: '6s'
+              write: '6s'
+              idle: '30s'
+        identity_validation:
+          elevated_session:
+            code_lifespan: '5 minutes'
+            elevation_lifespan: '10 minutes'
+            characters: 8
+            require_second_factor: false
+            skip_second_factor: false
+          reset_password:
+            jwt_lifespan: '5 minutes'
+            jwt_algorithm: 'HS256'
+        totp:
+          disable: false
+          issuer: 'Authelia'
+          skew: 1
+          secret_size: 32
+          algorithm: 'SHA1'
+          digits: 6
+          period: 30
+          allowed_algorithms:
+            - 'SHA1'
+          allowed_digits:
+            - 6
+          allowed_periods:
+            - 30
+        webauthn:
+          disable: true
+          enable_passkey_login: false
+          display_name: 'Authelia'
+          attestation_conveyance_preference: 'indirect'
+          timeout: '60 seconds'
+          filtering:
+            permitted_aaguids: []
+            prohibited_aaguids: []
+            prohibit_backup_eligibility: false
+          selection_criteria:
+            attachment: ''
+            discoverability: 'preferred'
+            user_verification: 'preferred'
+          metadata:
+            enabled: false
+            cache_policy: 'strict'
+            validate_trust_anchor: true
+            validate_entry: true
+            validate_entry_permit_zero_aaguid: false
+            validate_status: true
+            validate_status_permitted: []
+            validate_status_prohibited: []
+        ntp:
+          address: 'udp://time.cloudflare.com:123'
+          version: 4
+          max_desync: '3 seconds'
+          disable_startup_check: false
+          disable_failure: false
+        authentication_backend:
+          file:
+            path: /usersdata/users-database.yaml
+          password_reset:
+            disable: true
+            custom_url: ''
+          password_change:
+            disable: true
+          refresh_interval: '5 minutes'
+        password_policy:
+          standard:
+            enabled: false
+            min_length: 8
+            max_length: 0
+            require_uppercase: false
+            require_lowercase: false
+            require_number: false
+            require_special: false
+          zxcvbn:
+            enabled: false
+            min_score: 0
+        session:
+          name: 'authelia_session'
+          same_site: 'lax'
+          inactivity: '5 minutes'
+          expiration: '1 hour'
+          remember_me: '1 month'
+          cookies:
+            - name: authelia_session
+              domain: lab.com
+              authelia_url: https://auth.lab.com
+        regulation:
+          modes:
+          - 'user'
+          max_retries: 3
+          find_time: '2 minutes'
+          ban_time: '5 minutes'
+        storage:
+          local:
+            path: /databases/db.sqlite3
+        notifier:
+          disable_startup_check: false
+          filesystem:
+            filename: '/config/notification.txt'
+        identity_providers:
+          oidc:
+
+            authorization_policies:
+              admins_only:
+                default_policy: deny
+                rules:
+                  - subject: "group:admins"
+                    policy: two_factor
+
+            claims_policies:
+              default:
+                id_token: ['rat', 'groups', 'email', 'email_verified', 'alt_emails', 'preferred_username', 'name']
+
+            hmac_secret: {{ secret "/config/secrets/identity_provider.oidc.hmac_secret.key" | msquote }}
+
+            jwks:
+              - key_id: default
+                algorithm: 'RS256'
+                use: 'sig'
+                key: {{ secret "/config/secrets/identity_providers.oidc.jwks.key" | mindent 10 "|" }}
+                certificate_chain: {{ secret "/config/secrets/identity_providers.oidc.jwks.cert" | mindent 10 "|" }}
+
+            cors:
+              allowed_origins_from_client_redirect_uris: true
+              endpoints: [ userinfo, authorization, token, revocation, introspection ]
+
+            clients:
+              - client_id: headscale
+                client_name: Headscale
+                client_secret: {{ secret "/config/secrets/identity_providers.clients.headscale.client_secret.key" | msquote }}
+                public: false
+                authorization_policy: admins_only
+                require_pkce: true
+                pkce_challenge_method: 'S256'
+                redirect_uris:
+                  - 'https://headscale.lab.com/oidc/callback'
+                  - 'https://headscale.lab.com/admin/oidc/callback'
+                scopes: [ openid, email, profile, groups ]
+                response_types:
+                  - 'code'
+                grant_types:
+                  - 'authorization_code'
+                access_token_signed_response_alg: 'none'
+                userinfo_signed_response_alg: 'none'
+                token_endpoint_auth_method: client_secret_basic
+                
+              - client_id: wg-easy
+                client_name: wg-easy
+                client_secret: {{ secret "/config/secrets/identity_providers.clients.wg-easy.client_secret.key" | msquote }}
+                redirect_uris:
+                  - https://headscale-wg.lab.com/api/auth/oidc/callback
+                  - https://headscale-wg.lab.com/api/auth/oidc/link
+                scopes: [ openid, profile, email ]
+                authorization_policy: admins_only
+                require_pkce: true
+                token_endpoint_auth_method: client_secret_post
+
+              - client_id: ottrbox
+                client_secret: {{ secret "/config/secrets/identity_providers.clients.ottrbox.client_secret.key" | msquote }}
+                client_name: Ottrbox
+                public: false
+                authorization_policy: admins_only
+                require_pkce: false
+                pkce_challenge_method: ''
+                audience: [ ottrbox ]
+                redirect_uris:
+                  - https://filesharing.lab.com/api/oauth/callback/oidc
+                  - https://share.vpn.lab.com/api/oauth/callback/oidc
+                response_types:
+                  - 'code'
+                grant_types:
+                  - 'authorization_code'
+                  - 'refresh_token'
+                scopes: [ openid, offline_access, profile, email, groups ]
+                claims_policy: 'default'
+                id_token_signed_response_alg: 'RS256'
+                access_token_signed_response_alg: 'none'
+                userinfo_signed_response_alg: 'none'
+                token_endpoint_auth_method: client_secret_post
+
+              - client_id: q3js-kob
+                client_secret: {{ secret "/config/secrets/identity_providers.clients.q3js-kob.client_secret.key" | msquote }}
+                client_name: Q3JS-KOB
+                public: false
+                authorization_policy: one_factor
+                require_pkce: false
+                redirect_uris:
+                  - https://q3.lab.com/api/auth/callback/authelia
+                  - http://localhost:3000/api/auth/callback/authelia # for development
+                response_types:
+                  - 'code'
+                grant_types:
+                  - 'authorization_code'
+                  - 'refresh_token'
+                scopes: [ openid, offline_access, profile, email, groups ]
+                token_endpoint_auth_method: client_secret_post
+
+        access_control:
+          default_policy: 'deny' # Deny everything by default
+
+          rules:
+            - domain: headscale.lab.com
+              subject: "group:admins"
+              policy: two_factor
+
+            - domain: traefik.lab.com
+              subject: "group:admins"
+              policy: two_factor
+                
+            - domain: headscale-wg.lab.com
+              subject: "group:admins"
+              policy: two_factor
+
+            - domain: victoriametrics.lab.com
+              subject: "user:victoria-ext-service-account"
+              policy: one_factor
+
+            - domain: victorialogs.lab.com
+              subject: "user:victoria-ext-service-account"
+              policy: one_factor
+
+            - domain: jellyfin.lab.com
+              subject: "group:admins"
+              policy: two_factor
+
+            - domain: navidrome.lab.com
+              subject: "group:admins"
+              policy: two_factor
+
+            - domain: q3.lab.com
+              policy: bypass # all sensitive is protected by OIDC

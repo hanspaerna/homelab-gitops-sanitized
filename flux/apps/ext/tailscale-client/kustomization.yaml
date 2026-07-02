@@ -1,0 +1,22 @@
+namespace: tailscale-client
+
+resources:
+  - ../../base/tailscale-client/
+
+patches:
+  - target:
+      kind: Deployment
+      name: tailscale-client
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: tailscale-client
+      spec:
+        template:
+          spec:
+            containers:
+              - name: tailscale
+                env:
+                  - name: TS_HOSTNAME
+                    value: "k3s-ext"
