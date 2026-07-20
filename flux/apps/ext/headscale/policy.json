@@ -1,0 +1,71 @@
+{
+  "tagOwners": {
+    "tag:k3s-int": [],
+    "tag:k3s-ext": [],
+    "tag:router": [],
+    "tag:nas": [],
+    "tag:pve": []
+  },
+
+  "groups": {
+    "group:admins": ["user01@"]
+  },
+
+  "hosts": {
+    "wg-hans-pixel": "10.8.0.2/32",
+    "wg-hans-pixel-workprofile": "10.8.0.4/32",
+    "wg-kot-pixel": "10.8.0.3/32",
+    "blocky-dns": "10.45.100.100/32"
+  },
+
+  "grants": [
+    {
+      "src": ["wg-hans-pixel", "wg-hans-pixel-workprofile"],
+      "dst": ["tag:k3s-ext", "tag:k3s-int", "tag:router", "tag:pve", "tag:nas"],
+      "ip": ["*"]
+    },
+    {
+      "src": ["wg-kot-pixel"],
+      "dst": ["tag:k3s-int"],
+      "ip": ["*"]
+    }
+  ],
+
+  "autoApprovers": {
+    "routes": {
+      "10.8.0.0/24": ["tag:k3s-ext"],
+      "10.45.100.100/32": ["tag:k3s-ext"]
+    }
+  },
+
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["*"],
+      "dst": ["blocky-dns:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["tag:k3s-ext"],
+      "dst": ["tag:k3s-int:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["tag:k3s-int"],
+      "dst": ["tag:k3s-ext:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["group:admins"],
+      "dst": [
+        "autogroup:tagged:*",
+        "group:admins:*"
+      ]
+    },
+    {
+      "action": "accept",
+      "src": ["group:admins", "tag:k3s-ext"],
+      "dst": ["wg-hans-pixel:*", "wg-hans-pixel-workprofile:*"]
+    }
+  ]
+}

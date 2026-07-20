@@ -1,0 +1,133 @@
+---
+- name: Configure timezone
+  hosts: all
+  tags: timezone
+  tasks:
+    - name: Set timezone to Europe/Berlin
+      community.general.timezone:
+        name: Europe/Berlin
+
+- name: Disable password login
+  hosts: all
+  tags: disable_password
+  become: true
+  tasks:
+    - name: Disable SSH password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+        - { regexp: '^#?UsePAM', line: 'UsePAM no' }
+      notify: Restart sshd
+  handlers:
+    - name: Restart sshd
+      service:
+        name: sshd
+        state: restarted
+
+- name: Install System Utilities on all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install QEMU guest agent
+      ansible.builtin.apt:
+        name: qemu-guest-agent
+        state: present
+
+    - name: Start and enable QEMU guest agent service
+      ansible.builtin.systemd:
+        name: qemu-guest-agent
+        state: started
+        enabled: true
+
+    - name: Install vim # why not
+      ansible.builtin.apt:
+        name: vim
+        state: present
+
+    - name: Display system utilities status
+      ansible.builtin.debug:
+        msg: 'System utilities installed: QEMU guest agent and vim editor'
+
+- name: Increase inotify limits to fix an issue with K9S logs
+  hosts: all
+  tags: inotify
+  become: true
+  tasks:
+    - name: Increase max_user_watches
+      ansible.builtin.sysctl:
+        name: fs.inotify.max_user_watches
+        value: "262144"
+        sysctl_file: /etc/sysctl.d/99-inotify.conf
+        state: present
+        reload: true
+
+    - name: Increase max_user_instances
+      ansible.builtin.sysctl:
+        name: fs.inotify.max_user_instances
+        value: "512"
+        sysctl_file: /etc/sysctl.d/99-inotify.conf
+        state: present
+        reload: true
+
+- name: Install iGPU-specific utilities and drivers to the first worker
+  hosts: k3s-cp-1
+  tags: gpu
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install intel-gpu-tools
+      ansible.builtin.apt:
+        name: intel-gpu-tools
+        state: present
+
+    - name: Enable non-free and non-free-firmware repos
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/debian.sources
+        content: |
+          Types: deb
+          URIs: http://deb.debian.org/debian
+          Suites: trixie trixie-updates
+          Components: main contrib non-free non-free-firmware
+          Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://security.debian.org/debian-security
+          Suites: trixie-security
+          Components: main contrib non-free non-free-firmware
+          Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install non-free Intel driver and update kernel, firmware, and mesa
+      apt:
+        pkg:
+          - intel-media-va-driver-non-free
+          - linux-image-amd64
+          - firmware-intel-graphics
+          - firmware-intel-misc
+          - mesa-va-drivers
+        state: latest
+        update_cache: true
+
+    - name: Reboot worker node
+      ansible.builtin.reboot:
+        msg: "Rebooting worker node in 5 seconds"

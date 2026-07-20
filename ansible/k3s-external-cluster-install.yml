@@ -1,0 +1,243 @@
+- name: Ensure binary is installed on the local machine
+  hosts: localhost
+  become: false
+  tasks:
+    - name: Check if kubectl binary is available in PATH
+      ansible.builtin.command:
+        cmd: which kubectl
+      register: result
+      failed_when: result.rc != 0
+
+- name: Install Crowdsec Firewall Bouncer (VPS)
+  hosts: control_plane_external
+  become: true
+  tags: crowdsec
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Check if Crowdsec apt repository already exists
+      ansible.builtin.shell: |
+        cat /etc/apt/sources.list /etc/apt/sources.list.d/* | grep crowdsec
+      ignore_errors: true
+      register: crowdsec_grep_result
+      failed_when: crowdsec_grep_result.rc not in [0, 1]
+      changed_when: false
+
+    - name: Add Crowdsec apt repository
+      ansible.builtin.shell: |
+        curl -s https://install.crowdsec.net | sudo sh
+      when: crowdsec_grep_result.rc != 0
+
+    - name: Install crowdsec-firewall-bouncer-nftables package
+      ansible.builtin.apt:
+        name: 
+          - crowdsec-firewall-bouncer-nftables
+        state: present
+
+- name: Install K3s (VPS)
+  hosts: control_plane_external
+  become: true
+  tasks:
+    - name: check K3S_TOKEN is not empty
+      ansible.builtin.debug:
+        msg: "{{ k3s_token }}"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+        state: present
+
+    - name: Download K3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: '0755'
+
+    - name: Install K3s server
+      ansible.builtin.shell: |
+        INSTALL_K3S_VERSION={{ k3s_version }} \
+        K3S_TOKEN={{ k3s_token }} \
+        sh /tmp/k3s-install.sh server \
+          --cluster-init \
+          --write-kubeconfig-mode=644 \
+          --tls-san={{ ansible_host }} \
+          --node-name={{ inventory_hostname }} \
+          --cluster-cidr=10.44.0.0/16 \
+          --service-cidr=10.45.0.0/16 \
+          --disable=traefik \
+          --disable=servicelb
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for K3s to be ready
+      ansible.builtin.wait_for:
+        port: 6443
+        delay: 5
+        timeout: 300
+
+    - name: Get K3s node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: node_token
+
+    - name: Save node token
+      ansible.builtin.set_fact:
+        k3s_node_token: '{{ node_token.content | b64decode | trim }}'
+
+    - name: Display control plane status
+      ansible.builtin.command: kubectl get nodes
+      register: nodes_status
+      changed_when: false
+
+    - name: Show nodes
+      ansible.builtin.debug:
+        var: nodes_status.stdout_lines
+
+
+- name: Load modules
+  hosts: control_plane_external
+  become: true
+  tags: modules
+  tasks:
+    - name: Load ipv6table_nat module
+      community.general.modprobe:
+        name: ip6table_nat
+        state: present
+
+    - name: Check if ip6table_nat is already in /etc/modules
+      lineinfile:
+        state: absent
+        path: "/etc/modules"
+        regexp: "^ip6table_nat"
+      check_mode: true
+      changed_when: false # This just makes things look prettier in the logs
+      register: check_module_ip6table_nat
+
+    - name: Write ip6table_nat to /etc/modules
+      lineinfile:
+        state: present
+        path: "/etc/modules"
+        line: "ip6table_nat"
+      when: check_module_ip6table_nat.found == 0
+
+
+- name: Setup iptables rules
+  hosts: control_plane_external
+  become: true
+  tags: iptables
+  tasks:
+    - name: Allow Traefik metrics port 9100 from pod and service CIDRs only
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: '9100'
+        source: '{{ item }}'
+        jump: ACCEPT
+        action: insert
+        comment: 'traefik-metrics: allow cluster networks'
+      loop:
+        - 10.44.0.0/16
+        - 10.45.0.0/16
+
+    - name: Drop all other traffic to Traefik metrics port 9100
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: '9100'
+        jump: DROP
+        comment: 'traefik-metrics: deny everything else'
+
+- name: Verify Cluster
+  hosts: control_plane_external
+  become: true
+  tasks:
+    - name: Wait for all nodes to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready nodes --all --timeout=300s
+      register: wait_result
+      retries: 5
+      delay: 10
+      until: wait_result.rc == 0
+      changed_when: false
+
+    - name: Get cluster info
+      ansible.builtin.command: kubectl get nodes -o wide
+      register: cluster_info
+      changed_when: false
+
+    - name: Display cluster info
+      ansible.builtin.debug:
+        var: cluster_info.stdout_lines
+
+    - name: Get kubeconfig
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: kubeconfig_content
+
+    - name: Save kubeconfig locally
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        content: '{{ kubeconfig_content.content | b64decode |
+          regex_replace(''127.0.0.1'', hostvars[groups[''control_plane_external''][0]][''ansible_host'']) }}'
+        dest: '{{ playbook_dir }}/../.kubeconfig-external'
+        mode: '0600'
+
+    - name: Install Gateway API's CRDs
+      delegate_to: localhost
+      become: false
+      environment:
+        - KUBECONFIG: '{{ playbook_dir }}/../.kubeconfig-external'
+      ansible.builtin.command:
+        cmd: kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml --force-conflicts
+
+    - name: Display success message
+      ansible.builtin.debug:
+        msg:
+          - K3s cluster is ready!
+          - 'Control plane: {{ ansible_host }}'
+          - 'Kubeconfig saved to: {{ playbook_dir }}/../.kubeconfig-external'
+          - 'Use: export KUBECONFIG={{ playbook_dir }}/../.kubeconfig-external'
+
+- name: Flux CD setup new cluster
+  hosts: control_plane_external
+  become: false
+  vars:
+    fluxcd_kubernetes:
+      config_path: "{{ playbook_dir }}/../.kubeconfig-external"
+    fluxcd_bootstrap:
+      repository_type: "github"
+      github_user: "{{ github_username }}"
+      github_token: "{{ github_token }}"
+      repo_owner: "{{ github_username }}"
+      repo_name: "HOMELAB-gitops"
+      repo_branch: "main"
+      k8s_cluster_name: "ext"
+      cluster_conf_path: "./flux/clusters/ext"
+  roles:
+    - name: Flux Bootstrap
+      role: fluxcd-bootstrap
+      run_once: true
+  tags: fluxcd
+
+- name: Install Age-SOPS secret into cluster
+  hosts: localhost
+  become: false
+  tasks:
+    - name: (Re-)create sops-age secret resource
+      ansible.builtin.shell: |
+        kubectl delete secret sops-age --namespace=flux-system --ignore-not-found
+        cat ../age.agekey | kubectl create secret generic sops-age --namespace=flux-system --from-file=age.agekey=/dev/stdin
+      environment:
+        - KUBECONFIG: '{{ playbook_dir }}/../.kubeconfig-external'

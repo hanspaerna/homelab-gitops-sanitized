@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-proxmox
+  labels:
+    grafana_dashboard: "1"
+data:
+  proxmox.json: |
+    {
+      "title": "Proxmox",
+      "uid": "proxmox",
+      "editable": false,
+      "schemaVersion": 36,
+      "time": {"from": "now-6h", "to": "now"},
+      "refresh": "30s",
+      "panels": [
+        {
+          "title": "Node Uptime",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [{"expr": "{__name__=\"proxmox.nodes.pve.uptime\"}"}],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "title": "Node CPU Usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"proxmox.nodes.pve.cpustat.cpu\"} * 100", "legendFormat": "cpu %"},
+            {"expr": "{__name__=\"proxmox.nodes.pve.cpustat.iowait\"} * 100", "legendFormat": "iowait %"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}}
+        },
+        {
+          "title": "Node Load Average",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"proxmox.nodes.pve.cpustat.avg1\"}", "legendFormat": "1m"},
+            {"expr": "{__name__=\"proxmox.nodes.pve.cpustat.avg5\"}", "legendFormat": "5m"},
+            {"expr": "{__name__=\"proxmox.nodes.pve.cpustat.avg15\"}", "legendFormat": "15m"}
+          ]
+        },
+        {
+          "title": "Node Memory",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"proxmox.nodes.pve.memory.memused\"}", "legendFormat": "used"},
+            {"expr": "{__name__=\"proxmox.nodes.pve.memory.memtotal\"}", "legendFormat": "total"},
+            {"expr": "{__name__=\"proxmox.nodes.pve.memory.memavailable\"}", "legendFormat": "available"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "title": "Node Swap",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"proxmox.nodes.pve.memory.swapused\"}", "legendFormat": "used"},
+            {"expr": "{__name__=\"proxmox.nodes.pve.memory.swaptotal\"}", "legendFormat": "total"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "title": "Node Network (vmbr0)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"proxmox.nodes.pve.nics.vmbr0.receive\"}", "legendFormat": "receive"},
+            {"expr": "{__name__=\"proxmox.nodes.pve.nics.vmbr0.transmit\"}", "legendFormat": "transmit"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "binBps"}}
+        },
+        {
+          "title": "Storage Space",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=~\"proxmox\\.storages\\.pve\\..+\\.used\"}", "legendFormat": "{{__name__}}"},
+            {"expr": "{__name__=~\"proxmox\\.storages\\.pve\\..+\\.avail\"}", "legendFormat": "{{__name__}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "title": "VM CPU Usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=~\"proxmox\\.qemu\\.[0-9]+\\.cpu\"} * 100", "legendFormat": "{{__name__}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}}
+        },
+        {
+          "title": "VM Memory",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=~\"proxmox\\.qemu\\.[0-9]+\\.mem\"}", "legendFormat": "{{__name__}} used"},
+            {"expr": "{__name__=~\"proxmox\\.qemu\\.[0-9]+\\.maxmem\"}", "legendFormat": "{{__name__}} max"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "title": "VM Disk I/O",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=~\"proxmox\\.qemu\\.[0-9]+\\.diskread\"}", "legendFormat": "{{__name__}}"},
+            {"expr": "{__name__=~\"proxmox\\.qemu\\.[0-9]+\\.diskwrite\"}", "legendFormat": "{{__name__}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "binBps"}}
+        },
+        {
+          "title": "VM Network",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=~\"proxmox\\.qemu\\.[0-9]+\\.netin\"}", "legendFormat": "{{__name__}}"},
+            {"expr": "{__name__=~\"proxmox\\.qemu\\.[0-9]+\\.netout\"}", "legendFormat": "{{__name__}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "binBps"}}
+        }
+      ]
+    }

@@ -1,0 +1,11 @@
+namespace: slskd
+
+resources:
+  - ../../../shared-resources/git-secret # mandatory for all deployments that use initContainer with git-sync to read the private repo
+  - namespace.yaml
+  - secrets.yaml
+  - storage.yaml
+  - configmap.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml

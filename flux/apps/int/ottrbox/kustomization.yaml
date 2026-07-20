@@ -1,0 +1,9 @@
+namespace: ottrbox
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml
+  - configmap.yaml

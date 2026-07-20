@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: astl-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: astl
+  ports:
+    - name: http-astl
+      protocol: TCP
+      port: 80
+      targetPort: http
