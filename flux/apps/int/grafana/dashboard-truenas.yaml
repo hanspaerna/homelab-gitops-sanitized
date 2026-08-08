@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-truenas
+  labels:
+    grafana_dashboard: "1"
+data:
+  truenas.json: |
+    {
+      "title": "TrueNAS",
+      "uid": "truenas",
+      "editable": false,
+      "schemaVersion": 36,
+      "time": {"from": "now-6h", "to": "now"},
+      "refresh": "30s",
+      "panels": [
+        {
+          "title": "Uptime",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [{"expr": "{__name__=\"scale.truenas.system.uptime.uptime\"}"}],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "title": "Active Processes",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [{"expr": "{__name__=\"scale.truenas.system.active_processes.active\"}"}],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "title": "CPU Usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.truenas_cpu_usage.cpu.cpu\"}", "legendFormat": "total"},
+            {"expr": "{__name__=\"scale.truenas.truenas_cpu_usage.cpu.cpu0\"}", "legendFormat": "cpu0"},
+            {"expr": "{__name__=\"scale.truenas.truenas_cpu_usage.cpu.cpu1\"}", "legendFormat": "cpu1"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}}
+        },
+        {
+          "title": "System Load",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.system.load.load1\"}", "legendFormat": "1m"},
+            {"expr": "{__name__=\"scale.truenas.system.load.load5\"}", "legendFormat": "5m"},
+            {"expr": "{__name__=\"scale.truenas.system.load.load15\"}", "legendFormat": "15m"}
+          ]
+        },
+        {
+          "title": "Memory",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.truenas_meminfo.total.total\"} - {__name__=\"scale.truenas.truenas_meminfo.available.available\"}", "legendFormat": "used"},
+            {"expr": "{__name__=\"scale.truenas.truenas_meminfo.available.available\"}", "legendFormat": "available"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "title": "Dataset Space Free",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=~\"scale\\.truenas\\.disk_space_usage\\..+\\.avail\"}", "legendFormat": "{{__name__}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "title": "ARC Size",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.truenas_arcstats.size.size\"}", "legendFormat": "size"},
+            {"expr": "{__name__=\"scale.truenas.truenas_arcstats.avail.avail\"}", "legendFormat": "available"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "title": "ARC Hit Ratio",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.truenas_arcstats.ddh_p.ddh\"}", "legendFormat": "demand hit %"},
+            {"expr": "{__name__=\"scale.truenas.truenas_arcstats.l2hit_p.l2hit\"}", "legendFormat": "L2ARC hit %"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}}
+        },
+        {
+          "title": "Network Traffic (ens18)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.net.ens18.received\"}", "legendFormat": "received"},
+            {"expr": "{__name__=\"scale.truenas.net.ens18.sent\"}", "legendFormat": "sent"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "Kbits"}}
+        },
+        {
+          "title": "Disk Busy %",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.truenas_disk_stats.busy._serial_lunid_K3S02RYK_5000c500eaca4f0d.busy\"}", "legendFormat": "K3S02RYK"},
+            {"expr": "{__name__=\"scale.truenas.truenas_disk_stats.busy._serial_lunid_ZRT2GJ3E_5000c500eab84efc.busy\"}", "legendFormat": "ZRT2GJ3E"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}}
+        },
+        {
+          "title": "Disk I/O",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.truenas_disk_stats._serial_lunid_K3S02RYK_5000c500eaca4f0d.reads\"}", "legendFormat": "K3S02RYK reads"},
+            {"expr": "{__name__=\"scale.truenas.truenas_disk_stats._serial_lunid_K3S02RYK_5000c500eaca4f0d.writes\"}", "legendFormat": "K3S02RYK writes"},
+            {"expr": "{__name__=\"scale.truenas.truenas_disk_stats._serial_lunid_ZRT2GJ3E_5000c500eab84efc.reads\"}", "legendFormat": "ZRT2GJ3E reads"},
+            {"expr": "{__name__=\"scale.truenas.truenas_disk_stats._serial_lunid_ZRT2GJ3E_5000c500eab84efc.writes\"}", "legendFormat": "ZRT2GJ3E writes"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "KBs"}}
+        },
+        {
+          "title": "Disk Temperature",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+          "datasource": {"type": "victoriametrics-metrics-datasource", "uid": "victoriametrics-int"},
+          "targets": [
+            {"expr": "{__name__=\"scale.truenas.smart_log_smart.disktemp.K3S02RYK.K3S02RYK\"}", "legendFormat": "K3S02RYK"},
+            {"expr": "{__name__=\"scale.truenas.smart_log_smart.disktemp.ZRT2GJ3E.ZRT2GJ3E\"}", "legendFormat": "ZRT2GJ3E"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "celsius"}}
+        }
+      ]
+    }

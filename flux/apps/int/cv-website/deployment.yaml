@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cv-website
+  labels:
+    app: cv-website
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cv-website
+  template:
+    metadata:
+      labels:
+        app: cv-website
+    spec:
+      containers:
+        - name: cv-website
+          image: git.vpn.lab.com/user01/cv-website:latest
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 200m
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: pages
+              mountPath: /md/
+      volumes:
+        - name: pages
+          configMap:
+            name: pages
+

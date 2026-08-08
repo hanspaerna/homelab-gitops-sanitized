@@ -1,0 +1,53 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: truenas-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`truenas.vpn.lab.com`)
+      middlewares:
+      - name: truenas-redirect-ui # without it, TrueNAS will respond with 302 and redirect to http://truenas.lan right (in browser)
+      - name: truenas-host-rewrite
+      kind: Rule
+      services:
+      - name: truenas
+        kind: Service
+        scheme: http
+        port: 80
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: truenas
+spec:
+  type: ExternalName
+  externalName: truenas.lan
+  ports:
+    - name: http
+      port: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: truenas-redirect-ui
+spec:
+  redirectRegex:
+    regex: "^https://truenas\\.vpn\\.lab\.com/?$"
+    replacement: "https://truenas.vpn.lab.com/ui/"
+    permanent: false
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: truenas-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: truenas.lan
+      X-Forwarded-Host: truenas.vpn.lab.com
+      X-Forwarded-Proto: https 

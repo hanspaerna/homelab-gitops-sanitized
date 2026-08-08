@@ -1,0 +1,17 @@
+namespace: copyparty
+
+resources:
+  - ../../../shared-resources/k8up-secret/
+  - ../../../shared-resources/k8up-prebackup/
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml
+  - storage.yaml
+  - backup.yaml
+  - users-database.yaml
+
+configMapGenerator:
+  - name: copyparty-config
+    files:
+      - config.conf

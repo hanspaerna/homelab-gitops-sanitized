@@ -1,0 +1,8 @@
+namespace: wg-easy
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - storage.yaml
+  - httproute.yaml
+  - secrets.yaml

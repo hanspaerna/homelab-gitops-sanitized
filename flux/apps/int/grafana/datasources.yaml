@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  labels:
+    grafana_datasource: "1"
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: VictoriaMetrics (int)
+        type: victoriametrics-metrics-datasource
+        uid: victoriametrics-int
+        url: http://victoria-metrics-victoria-metrics-single-server.victoria-metrics.svc.cluster.local:8428
+        access: proxy
+        editable: false
+
+      - name: VictoriaMetrics (ext)
+        type: victoriametrics-metrics-datasource
+        uid: victoriametrics-ext
+        url: https://victoriametrics.lab.com
+        access: proxy
+        editable: false
+        basicAuth: true
+        basicAuthUser: $__file{/etc/grafana/secrets/victoria-ext-auth/username}
+        secureJsonData:
+          basicAuthPassword: $__file{/etc/grafana/secrets/victoria-ext-auth/password}
+
+      - name: VictoriaLogs (int)
+        type: victoriametrics-logs-datasource
+        uid: victorialogs-int
+        url: http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428
+        access: proxy
+        isDefault: true
+        editable: false
+        jsonData:
+          # Traefik-specific log level rules (cannot be retrieved from Alloy)
+          logLevelRules:
+            - field: "DownstreamStatus"
+              value: "^5[0-9]{2}$"
+              level: "error"
+              operator: "regex"
+              enabled: true
+            - field: "DownstreamStatus"
+              value: "^4[0-9]{2}$"
+              level: "warning"
+              operator: "regex"
+              enabled: true
+            - field: "DownstreamStatus"
+              value: "^[23][0-9]{2}$"
+              level: "info"
+              operator: "regex"
+              enabled: true
+
+      - name: VictoriaLogs (ext)
+        type: victoriametrics-logs-datasource
+        uid: victorialogs-ext
+        url: https://victorialogs.lab.com
+        access: proxy
+        editable: false
+        basicAuth: true
+        basicAuthUser: $__file{/etc/grafana/secrets/victoria-ext-auth/username}
+        secureJsonData:
+          basicAuthPassword: $__file{/etc/grafana/secrets/victoria-ext-auth/password}
+        jsonData:
+          # Traefik-specific log level rules (cannot be retrieved from Alloy)
+          logLevelRules:
+            - field: "DownstreamStatus"
+              value: "^5[0-9]{2}$"
+              level: "error"
+              operator: "regex"
+              enabled: true
+            - field: "DownstreamStatus"
+              value: "^4[0-9]{2}$"
+              level: "warning"
+              operator: "regex"
+              enabled: true
+            - field: "DownstreamStatus"
+              value: "^[23][0-9]{2}$"
+              level: "info"
+              operator: "regex"
+              enabled: true
