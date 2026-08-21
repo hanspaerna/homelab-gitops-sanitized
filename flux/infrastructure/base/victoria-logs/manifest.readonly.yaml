@@ -1,0 +1,125 @@
+# Generated with Renderer.sh at 2026-05-20T17:19:47+0200
+# Chart version: 0.12.4
+# Repo name: vm
+# Repo: https://victoriametrics.github.io/helm-charts/
+# Chart name: victoria-logs-single
+# 
+# Executed command: ./renderer.sh --chart victoria-logs-single --repo-name vm --repo https://victoriametrics.github.io/helm-charts/ --version 0.12.4 --folder victoria-logs --namespace victoria-logs --is-infrastructure true
+---
+# Source: victoria-logs-single/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels: 
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: victoria-logs
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-single
+    app.kubernetes.io/version: v1.50.0
+    helm.sh/chart: victoria-logs-single-0.12.4
+  name: victoria-logs-victoria-logs-single-server
+  namespace: victoria-logs
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: http
+      port: 9428
+      protocol: TCP
+      targetPort: http
+  selector: 
+    app: server
+    app.kubernetes.io/instance: victoria-logs
+    app.kubernetes.io/name: victoria-logs-single
+---
+# Source: victoria-logs-single/templates/server.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: victoria-logs-victoria-logs-single-server
+  namespace: victoria-logs
+  labels: 
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: victoria-logs
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-single
+    app.kubernetes.io/version: v1.50.0
+    helm.sh/chart: victoria-logs-single-0.12.4
+spec:
+  podManagementPolicy: OrderedReady
+  updateStrategy: {}
+  replicas: 1
+  serviceName: victoria-logs-victoria-logs-single-server
+  selector:
+    matchLabels: 
+      app: server
+      app.kubernetes.io/instance: victoria-logs
+      app.kubernetes.io/name: victoria-logs-single
+  template:
+    metadata:
+      labels: 
+        app: server
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: victoria-logs
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: victoria-logs-single
+    spec:
+      securityContext: 
+        fsGroup: 2000
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: vlogs
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          image: victoriametrics/victoria-logs:v1.50.0
+          imagePullPolicy: IfNotPresent
+          args: 
+            - --envflag.enable
+            - --envflag.prefix=VM_
+            - --http.shutdownDelay=15s
+            - --httpListenAddr=:9428
+            - --loggerFormat=json
+            - --retentionPeriod=7d
+            - --storageDataPath=/storage
+          ports:
+            - name: http
+              containerPort: 9428
+          readinessProbe: 
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe: 
+            failureThreshold: 10
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            tcpSocket:
+              port: http
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: server-volume
+              mountPath: /storage
+            
+      terminationGracePeriodSeconds: 60
+      volumes:
+        
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: server-volume
+      spec:
+        accessModes: 
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

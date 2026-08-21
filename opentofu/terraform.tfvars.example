@@ -1,0 +1,43 @@
+# Proxmox Connection
+proxmox_api_url = "https://<PROXMOX_HOST>:8006/api2/json"
+proxmox_api_token_id = "root@pam!opentofu"
+proxmox_api_token_secret = "<TOKEN>"
+
+# SSH Key
+ssh_public_key = "<PUBLIC KEY>"
+
+# Proxmox Settings
+proxmox_node = "pve"
+template_id = "debian-13-tpl"
+vm_id_start = 600
+storage = "<STORAGE NAME>"
+subnet = "192.168.1.0/24"
+bridge = "vmbr0"
+gateway = "192.168.1.1"
+nameserver = "192.168.1.1"
+searchdomain = "local"
+
+cloud_init_username = "root"
+cloud_init_password = "<PASSWORD>"
+
+# Control Plane Configuration
+control_plane_count = 1
+control_plane_cpu = 10
+control_plane_memory = 32768
+control_plane_disk_size = "200G"
+control_plane_ip_start = "192.168.1.101"
+control_plane_first_num = 101
+
+# K3s Configuration
+k3s_version = "v1.34.1+k3s1"
+# k3s_token = ""  # Leave empty to auto-generate
+
+# Hetzner Cloud Configuration
+hcloud_token = ""
+
+# GitHub credentials (read + write access is required by FluxCD)
+github_username = ""
+github_token = ""
+
+igpu_pcie_id = "0000:00:02.0"
+zigbee_usb_id = "10c4:ea60"

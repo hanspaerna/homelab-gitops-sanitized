@@ -1,0 +1,10 @@
+namespace: traefik-ext
+
+resources:
+  - navidrome.yaml
+  - jellyfin.yaml
+  - koito.yaml
+  - q3server.yaml
+  - grimmory-kobo.yaml
+  - copyparty-shared-only.yaml
+  - homosyntaxisme.yaml

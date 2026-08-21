@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+    discovery.relabel "pods" {
+      targets = discovery.kubernetes.pods.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+    }
+    loki.source.kubernetes "pods" {
+      targets    = discovery.relabel.pods.output
+      forward_to = [loki.process.pods.receiver]
+    }
+    loki.process "pods" {
+      // try to extract level from JSON
+      stage.json {
+        expressions = {
+          extracted_level = "level",
+        }
+      }
+
+      // for logs where JSON level was empty, fall back to keyword matching against the raw log line
+      stage.regex {
+        expression = `(?i)(?P<regex_level>\b(error|err|warn|warning|info|debug|fatal|critical)\b)`
+      }
+
+      // use JSON level if present, otherwise use regex match
+      stage.template {
+        source   = "final_level"
+        template = `{{ if .extracted_level }}{{ .extracted_level }}{{ else }}{{ .regex_level }}{{ end }}`
+      }
+
+      // exception: [SERVER:ERR] in q3server namespace is not an error, just a regular output of unknown nature
+      stage.match {
+        selector = "{namespace=\"q3server\"}"
+
+        stage.template {
+          source   = "final_level"
+          template = `{{ if regexMatch "(?i)\\[SERVER:ERR\\]" .Entry }}info{{ else }}{{ .final_level }}{{ end }}`
+        }
+      }
+
+      stage.structured_metadata {
+        values = {
+          level = "final_level",
+        }
+      }
+
+      // create a _msg value for Traefik
+      stage.match {
+        selector = "{container=\"traefik\"}"
+
+        stage.json {
+          expressions = {
+            downstream_status = "DownstreamStatus",
+            request_method    = "RequestMethod",
+            request_path      = "RequestPath",
+            service_name      = "ServiceName",
+            duration          = "Duration",
+          }
+        }
+
+        stage.template {
+          source   = "message"
+          template = "{{ .request_method }} {{ .request_path }} {{ .downstream_status }} {{ .service_name }} {{ .duration }}ns"
+        }
+
+        stage.output {
+          source = "message"
+        }
+      }
+
+      forward_to = [loki.write.victorialogs.receiver]
+    }
+    loki.write "victorialogs" {
+      endpoint {
+        url = "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/loki/api/v1/push?_msg_field=msg,message,log&_stream_fields=namespace,pod,container"
+      }
+    }
