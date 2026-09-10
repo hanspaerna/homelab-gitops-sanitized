@@ -1,0 +1,150 @@
+# game server ports
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: q3js-srv-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`q3srv.lab.com`)
+      middlewares:
+      - name: bouncer
+      kind: Rule
+      services:
+      - name: q3js-srv-vpn-svc
+        kind: Service
+        scheme: http
+        port: 27961
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: q3js-srv-vpn-svc
+spec:
+  type: ExternalName
+  externalName: vpn.lab.com
+  ports:
+    - name: http
+      port: 27961
+
+
+# q3 server UDP forward (some players want to use the installed client)
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteUDP
+metadata:
+  name: q3js-srv-udp-ingressroute
+spec:
+  entryPoints:
+    - q3js
+  routes:
+    - services:
+        - name: q3js-srv-udp-svc
+          port: 27960
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: q3js-srv-udp-svc
+spec:
+  type: ExternalName
+  externalName: vpn.lab.com
+  ports:
+    - name: udp
+      port: 27960
+      protocol: UDP
+
+
+# q3 master subdomain
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: q3js-master-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`q3master.lab.com`)
+      middlewares:
+      - name: bouncer
+      - name: q3js-master-host-rewrite
+      kind: Rule
+      services:
+      - name: q3js-master-vpn
+        kind: Service
+        scheme: https
+        port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: q3js-master-vpn
+spec:
+  type: ExternalName
+  externalName: q3master.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: q3js-master-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: q3master.vpn.lab.com
+
+
+
+
+# q3 website subdomain
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: q3js-website-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`q3.lab.com`)
+      middlewares:
+      - name: bouncer
+      - name: authelia-auth
+      - name: q3js-website-host-rewrite
+      kind: Rule
+      services:
+      - name: q3js-website-vpn
+        kind: Service
+        scheme: https
+        port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: q3js-website-vpn
+spec:
+  type: ExternalName
+  externalName: q3.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: q3js-website-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: q3.vpn.lab.com

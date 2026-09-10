@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radicale
+  labels:
+    app.kubernetes.io/name: radicale
+    app.kubernetes.io/instance: radicale
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: radicale
+      app.kubernetes.io/instance: radicale
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: radicale
+        app.kubernetes.io/instance: radicale
+    spec:
+      containers:
+        - name: radicale
+          image: ghcr.io/kozea/radicale:3.7.2
+          ports:
+            - containerPort: 5232
+              name: http
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: private
+              mountPath: /etc/radicale/config
+              subPath: config
+            - name: private
+              mountPath: /config/users
+              subPath: users
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5232
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5232
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: radicale-data-pvc
+        - name: private
+          persistentVolumeClaim:
+            claimName: radicale-private-pvc

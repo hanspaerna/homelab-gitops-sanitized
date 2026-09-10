@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mdrm-svc
+  labels:
+    app.kubernetes.io/name: mdrm
+    app.kubernetes.io/instance: mdrm
+spec:
+  selector:
+    app.kubernetes.io/name: mdrm
+    app.kubernetes.io/instance: mdrm
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8338
+      targetPort: 8338
+  type: ClusterIP

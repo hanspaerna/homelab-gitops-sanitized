@@ -1,0 +1,133 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: frigate-secret
+type: Opaque
+stringData:
+  rtsp-password: "changeme"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frigate
+  labels:
+    app: frigate
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: frigate
+  template:
+    metadata:
+      labels:
+        app: frigate
+    spec:
+      containers:
+        - name: frigate
+          image: ghcr.io/blakeblackshear/frigate:0.17.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+            - name: rtsp
+              containerPort: 8554
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: FRIGATE_RTSP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: frigate-secret
+                  key: rtsp-password
+          volumeMounts:
+            - name: ha-storage
+              mountPath: /config
+              subPath: frigate
+            - name: media
+              mountPath: /media/frigate
+            - name: shm
+              mountPath: /dev/shm
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+              gpu.intel.com/i915: "1" # require iGPU
+#          livenessProbe:
+#            httpGet:
+#              path: /api/version
+#              port: http
+#            initialDelaySeconds: 30
+#            periodSeconds: 30
+#            failureThreshold: 5
+#          readinessProbe:
+#            httpGet:
+#              path: /api/version
+#              port: http
+#            initialDelaySeconds: 15
+#            periodSeconds: 10
+      volumes:
+        - name: ha-storage
+          persistentVolumeClaim:
+            claimName: ha-storage-pvc
+        - name: media
+          persistentVolumeClaim:
+            claimName: frigate-media
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: frigate-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "frigate.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: frigate
+          port: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frigate
+  labels:
+    app: frigate
+spec:
+  selector:
+    app: frigate
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+    - name: rtsp
+      port: 8554
+      targetPort: rtsp
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frigate-media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: local-path

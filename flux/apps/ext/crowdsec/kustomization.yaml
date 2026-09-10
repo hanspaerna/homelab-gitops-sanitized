@@ -1,0 +1,114 @@
+namespace: crowdsec
+
+resources:
+  - ../../base/crowdsec/
+  - namespace.yaml
+  - secrets.yaml
+  - nodeport-service.yaml
+
+configMapGenerator:
+- name: crowdsec-my-whitelists
+  files:
+    - my-whitelists.yaml
+- name: ntfy
+  files:
+    - ntfy.yaml
+- name: http-default
+  files:
+    - http.yaml
+- name: profiles
+  files:
+    - profiles.yaml
+
+patches:
+  # Add prometheus scrape annotations to agent
+  - patch: |-
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: crowdsec-agent
+      spec:
+        template:
+          metadata:
+            annotations:
+              prometheus.io/scrape: "true"
+              prometheus.io/port: "6060"
+              prometheus.io/path: "/metrics"
+    target:
+      kind: DaemonSet
+      name: crowdsec-agent
+
+  # Add prometheus scrape annotations to lapi
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: crowdsec-lapi
+      spec:
+        template:
+          metadata:
+            annotations:
+              prometheus.io/scrape: "true"
+              prometheus.io/port: "6060"
+              prometheus.io/path: "/metrics"
+    target:
+      kind: Deployment
+      name: crowdsec-lapi
+
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: my-whitelists
+          configMap:
+            name: crowdsec-my-whitelists
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: my-whitelists
+          mountPath: /etc/crowdsec/parsers/s02-enrich/my-whitelists.yaml
+          subPath: my-whitelists.yaml
+    target:
+      kind: DaemonSet
+      name: crowdsec-agent
+
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: ntfy
+          configMap:
+            name: ntfy
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: http-default
+          configMap:
+            name: http-default
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: profiles
+          configMap:
+            name: profiles
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: ntfy
+          mountPath: /etc/crowdsec_data/notifications/ntfy.yaml
+          subPath: ntfy.yaml
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: http-default
+          mountPath: /etc/crowdsec_data/notifications/http.yaml
+          subPath: http.yaml
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: profiles
+          mountPath: /etc/crowdsec_data/profiles.yaml
+          subPath: profiles.yaml
+    target:
+      kind: Deployment
+      name: crowdsec-lapi

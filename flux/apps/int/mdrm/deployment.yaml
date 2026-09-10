@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mdrm
+  labels:
+    app.kubernetes.io/name: mdrm
+    app.kubernetes.io/instance: mdrm
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mdrm
+      app.kubernetes.io/instance: mdrm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mdrm
+        app.kubernetes.io/instance: mdrm
+    spec:
+      containers:
+        - name: metadata-remote
+          image: ghcr.io/hanspaerna/metadata-remote-mobile:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: downloads
+              mountPath: /music/downloads
+            - name: music
+              mountPath: /music/library
+          ports:
+            - containerPort: 8338
+              name: http
+      volumes:
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-pvc
+        - name: music
+          persistentVolumeClaim:
+            claimName: music-pvc

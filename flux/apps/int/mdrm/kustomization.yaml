@@ -1,0 +1,8 @@
+namespace: mdrm
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - httproute.yaml
+  - pvc.yaml
+  - svc.yaml
