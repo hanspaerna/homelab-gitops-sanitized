@@ -1,0 +1,6 @@
+namespace: tailscale-client
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - storage.yaml

@@ -1,0 +1,54 @@
+resources:
+  - ../../base/authelia
+  - namespace.yaml
+  - httproute.yaml
+  - users-database.yaml
+  - configuration.yaml
+  - secrets.yaml
+  - pvc.yaml
+
+patches:
+  - target:
+      kind: DaemonSet
+      name: authelia
+    patch: |-
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: authelia
+        namespace: authelia
+      spec:
+        template:
+          spec:
+            containers:
+              - name: authelia
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                  limits:
+                    cpu: 500m
+                    memory: 256Mi
+                volumeMounts:
+                  - name: authelia-users
+                    mountPath: /usersdata/users-database.yaml
+                    subPath: users-database.yaml
+                    readOnly: true
+                  - name: authelia-data
+                    mountPath: /databases
+                  - name: authelia-secrets
+                    mountPath: /config/secrets
+                    readOnly: true
+            volumes:
+              - name: authelia-users
+                configMap:
+                  name: authelia-users
+                  items:
+                    - key: users-database.yaml
+                      path: users-database.yaml
+              - name: authelia-data
+                persistentVolumeClaim:
+                  claimName: authelia-data-pvc
+              - name: authelia-secrets
+                secret:
+                  secretName: authelia

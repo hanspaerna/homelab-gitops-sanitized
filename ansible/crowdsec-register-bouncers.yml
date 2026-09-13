@@ -1,0 +1,177 @@
+- name: Add Traefik and firewall bouncers to Crowdsec LAPI
+  hosts: localhost
+  become: false
+  vars:
+    secrets_file: "{{ playbook_dir }}/../flux/apps/ext/traefik/secrets.yaml"
+    kubeconfig: "{{ playbook_dir }}/../.kubeconfig-external"
+  tasks:
+    - name: Check if SOPS is installed
+      ansible.builtin.command: which sops
+      register: sops_check
+      failed_when: sops_check.rc != 0
+      changed_when: false
+
+    - name: Decrypt secrets file with SOPS
+      ansible.builtin.command: sops -d {{ secrets_file }}
+      environment:
+        SOPS_AGE_KEY_FILE: "{{ playbook_dir }}/../age.agekey"
+      register: decrypted_secrets
+      changed_when: false
+
+    - name: Parse decrypted YAML
+      ansible.builtin.set_fact:
+        secrets_data: "{{ decrypted_secrets.stdout | from_yaml }}"
+
+    - name: Extract Traefik bouncer LAPI key
+      ansible.builtin.set_fact:
+        traefik_bouncer_lapi_key: "{{ secrets_data.stringData.key }}"
+
+    - name: Extract Firewall bouncer LAPI key
+      ansible.builtin.set_fact:
+        firewall_bouncer_lapi_key: "{{ secrets_data.stringData.firewallKey }}"
+
+    - name: Display extracted keys (first 10 chars)
+      ansible.builtin.debug:
+        msg: 
+          - "Traefik bouncer key: {{ traefik_bouncer_lapi_key[:10] }}..."
+          - "Firewall bouncer key: {{ firewall_bouncer_lapi_key[:10] }}..."
+
+    - name: Find Crowdsec LAPI pod
+      ansible.builtin.shell: |
+        kubectl get pods -n crowdsec -l k8s-app=crowdsec,type=lapi -o jsonpath='{.items[0].metadata.name}'
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: crowdsec_pod
+      changed_when: false
+      failed_when: crowdsec_pod.stdout == ''
+
+    - name: Display Crowdsec pod name
+      ansible.builtin.debug:
+        msg: "Crowdsec LAPI pod: {{ crowdsec_pod.stdout }}"
+
+    - name: Check if bouncer already exists
+      ansible.builtin.shell: |
+        kubectl exec -n crowdsec {{ crowdsec_pod.stdout }} -- cscli bouncers list -o json
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: bouncers_list
+      changed_when: false
+      failed_when: false
+
+    - name: Parse bouncers list
+      ansible.builtin.set_fact:
+        existing_bouncers: "{{ bouncers_list.stdout | from_json }}"
+      when: bouncers_list.rc == 0
+
+    - name: Check if traefik-bouncer exists
+      ansible.builtin.set_fact:
+        traefik_bouncer_exists: "{{ existing_bouncers | selectattr('name', 'equalto', 'traefik-bouncer') | list | length > 0 }}"
+      when: existing_bouncers is defined
+
+    - name: Check if firewall-bouncer exists
+      ansible.builtin.set_fact:
+        firewall_bouncer_exists: "{{ existing_bouncers | selectattr('name', 'equalto', 'firewall-bouncer') | list | length > 0 }}"
+      when: existing_bouncers is defined
+
+    - name: Delete existing traefik-bouncer if it exists
+      ansible.builtin.shell: |
+        kubectl exec -n crowdsec {{ crowdsec_pod.stdout }} -- cscli bouncers delete traefik-bouncer
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      when: traefik_bouncer_exists | default(false)
+
+    - name: Delete existing firewall-bouncer if it exists
+      ansible.builtin.shell: |
+        kubectl exec -n crowdsec {{ crowdsec_pod.stdout }} -- cscli bouncers delete firewall-bouncer
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      when: firewall_bouncer_exists | default(false)
+
+    - name: Add traefik-bouncer to Crowdsec
+      ansible.builtin.shell: |
+        kubectl exec -n crowdsec {{ crowdsec_pod.stdout }} -- cscli bouncers add traefik-bouncer -k {{ traefik_bouncer_lapi_key | quote }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: add_traefik_bouncer_result
+      changed_when: "'successfully added' in add_traefik_bouncer_result.stdout or 'successfully added' in add_traefik_bouncer_result.stderr"
+
+    - name: Add firewall-bouncer to Crowdsec
+      ansible.builtin.shell: |
+        kubectl exec -n crowdsec {{ crowdsec_pod.stdout }} -- cscli bouncers add firewall-bouncer -k {{ firewall_bouncer_lapi_key | quote }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: add_firewall_bouncer_result
+      changed_when: "'successfully added' in add_firewall_bouncer_result.stdout or 'successfully added' in add_firewall_bouncer_result.stderr"
+
+    - name: Display results
+      ansible.builtin.debug:
+        msg:
+          - "Traefik bouncer registration result:"
+          - "{{ add_traefik_bouncer_result.stdout }}"
+          - "{{ add_traefik_bouncer_result.stderr }}"
+          - "Firewall bouncer registration result:"
+          - "{{ add_firewall_bouncer_result.stdout }}"
+          - "{{ add_firewall_bouncer_result.stderr }}"
+
+    - name: Verify bouncers were added
+      ansible.builtin.shell: |
+        kubectl exec -n crowdsec {{ crowdsec_pod.stdout }} -- cscli bouncers list
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: verify_result
+      changed_when: false
+
+    - name: Display bouncers list
+      ansible.builtin.debug:
+        msg: "{{ verify_result.stdout_lines }}"
+
+- name: Update firewall bouncer's configuration
+  hosts: control_plane_external
+  become: false
+  vars:
+    secrets_file: "{{ playbook_dir }}/../flux/apps/ext/traefik/secrets.yaml"
+  tasks:
+    - name: Check if SOPS is installed
+      delegate_to: localhost
+      ansible.builtin.command: which sops
+      register: sops_check
+      failed_when: sops_check.rc != 0
+      changed_when: false
+
+    - name: Decrypt secrets file with SOPS
+      delegate_to: localhost
+      ansible.builtin.command: sops -d {{ secrets_file }}
+      environment:
+        SOPS_AGE_KEY_FILE: "{{ playbook_dir }}/../age.agekey"
+      register: decrypted_secrets
+      changed_when: false
+
+    - name: Parse decrypted YAML
+      delegate_to: localhost
+      ansible.builtin.set_fact:
+        secrets_data: "{{ decrypted_secrets.stdout | from_yaml }}"
+
+    - name: Extract Traefik bouncer LAPI key
+      delegate_to: localhost
+      ansible.builtin.set_fact:
+        firewall_bouncer_lapi_key: "{{ secrets_data.stringData.firewallKey }}"
+
+    - name: Insert API key into YAML
+      become: true
+      lineinfile:
+        path: /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
+        regexp: '^api_key:'
+        line: 'api_key: {{ firewall_bouncer_lapi_key }}' 
+
+    - name: Update LAPI URL in YAML
+      become: true
+      lineinfile:
+        path: /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
+        regexp: '^api_url:'
+        line: 'api_url: http://127.0.0.1:30800/'
+
+    - name: Restart firewall bouncer's systemd service
+      become: true
+      systemd:
+        name: crowdsec-firewall-bouncer.service
+        state: restarted

@@ -1,0 +1,18 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: backrest-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "restic.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: backrest-svc
+          port: 9898

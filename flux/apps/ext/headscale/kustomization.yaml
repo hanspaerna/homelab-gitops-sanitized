@@ -1,0 +1,17 @@
+namespace: headscale
+
+resources:
+  - namespace.yaml
+  - configuration.yaml
+  - deployment.yaml
+  - storage.yaml
+  - httproute.yaml
+  - svc.yaml
+  - secrets.yaml
+  - headplane-config.yaml
+  - rbac.yaml
+
+configMapGenerator:
+  - name: headscale-acl
+    files:
+      - policy.json

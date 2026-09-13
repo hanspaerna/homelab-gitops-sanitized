@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restic-backup
+  labels:
+    app.kubernetes.io/name: restic-backup
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: restic-backup
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: restic-backup
+    spec:
+      containers:
+        - name: restic-rest-server
+          image: restic/rest-server:0.14.0
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: DISABLE_AUTHENTICATION
+              value: "true"
+            - name: OPTIONS
+              value: "" # any additional options
+          volumeMounts:
+            - name: k3s-volumes-bp
+              mountPath: /data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "50m"
+            limits:
+              memory: "6Gi"
+      volumes:
+        - name: k3s-volumes-bp
+          persistentVolumeClaim:
+            claimName: k3s-volumes-bp-pvc

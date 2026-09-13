@@ -1,0 +1,5 @@
+namespace: victoria-logs
+
+resources:
+  - ../../base/victoria-logs/
+  - httproute.yaml
