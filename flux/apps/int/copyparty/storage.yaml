@@ -1,0 +1,310 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-downloads-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#downloads#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/downloads
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-music-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#music#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/music
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-movies-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#movies#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/movies
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-private-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#private#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/private
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-tvs-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#series#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/series
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-games-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#games#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/games
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-videos-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#videos#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/videos
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-special-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#special#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/special
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: copyparty-books-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#books#copyparty"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/books
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: downloads-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-downloads-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: music-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-music-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: movies-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-movies-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: private-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-private-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tvs-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-tvs-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: games-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-games-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: videos-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-videos-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: special-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-special-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: books-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: copyparty-books-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: config-pvc
+  annotations:
+    k8up.io/backup: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 100Mi

@@ -1,0 +1,7 @@
+namespace: astl
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml
