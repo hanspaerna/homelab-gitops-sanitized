@@ -1,0 +1,45 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: tcd-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`tcd.vpn.lab.com`)
+      kind: Rule
+      services:
+        - name: tcd
+          kind: Service
+          scheme: http
+          port: 80
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tcd
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: tcd-slice
+  labels:
+    kubernetes.io/service-name: tcd
+ports:
+  - name: http
+    protocol: TCP
+    port: 80
+endpoints:
+  - addresses:
+      - "192.168.1.139"
+    conditions:
+      ready: true
+addressType: "IPv4"

@@ -1,0 +1,60 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: headplane-config
+data:
+  config.yaml: |
+    # Configuration for the Headplane server and web application
+    server:
+      host: "0.0.0.0"
+      port: 3000
+
+      # The base URL for Headplane. Please keep in mind that this will be required
+      # for Headscale to properly function going forward AND it should not include
+      # the dashboard prefix (/admin) portion.
+      base_url: "https://headscale.lab.com"
+
+      # The secret used to encode and decode web sessions (must be 32 characters)
+      # You may also provide `cookie_secret_path` instead to read a value from disk.
+      # See https://headplane.net/configuration/#sensitive-values
+      cookie_secret: "<change_me_to_something_secure!>"
+
+      # Whether cookies should be marked as Secure
+      # * Should be false if running without HTTPs
+      # * Should be true if running behind a reverse proxy with HTTPs
+      # When `tls_cert_path`/`tls_key_path` are set below this is forced
+      # to true automatically.
+      cookie_secure: true
+      
+      cookie_max_age: 86400 # 1 day in seconds
+      data_path: "/var/lib/headplane"
+
+    headscale:
+      url: "http://headscale:8080" # (THIS IS NOT the gRPC endpoint, but the HTTP endpoint)
+      config_path: "/etc/headscale/config.yaml"
+
+    integration:
+      agent:
+        enabled: false
+        pre_authkey: "" # should be specified even with disabled agent due to a bug in 0.6.3
+      docker:
+        enabled: false
+      proc:
+        enabled: false
+
+      kubernetes:
+        enabled: true
+        # Validates the manifest for the Pod to ensure all of the criteria
+        # are set correctly. Turn this off if you are having issues with
+        # shareProcessNamespace not being validated correctly.
+        validate_manifest: true
+
+    oidc:
+      enabled: true
+      issuer: "https://auth.lab.com"
+      client_id: "headscale"
+      use_pkce: true
+      disable_api_key_login: true
+      scope: "openid email profile groups"
+      default_role: "admin"

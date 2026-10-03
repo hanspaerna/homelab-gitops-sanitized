@@ -1,0 +1,41 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grimmory-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`books.lab.com`) && (PathPrefix(`/api/koreader`) || PathPrefix(`/api/v1/opds`))
+      middlewares:
+        - name: bouncer
+        - name: grimmory-host-rewrite
+      kind: Rule
+      services:
+        - name: grimmory-vpn
+          kind: Service
+          scheme: https
+          port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grimmory-vpn
+spec:
+  type: ExternalName
+  externalName: grimmory.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: grimmory-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: grimmory.vpn.lab.com

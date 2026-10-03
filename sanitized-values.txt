@@ -1,0 +1,1 @@
+# Format: find|replace (case-insensitive, one per line, # for comments)

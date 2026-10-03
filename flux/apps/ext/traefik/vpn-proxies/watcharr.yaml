@@ -1,0 +1,52 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: watcharr-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`watchlist.lab.com`)
+      middlewares:
+        - name: bouncer
+        - name: watcharr-redirect-list
+        - name: watcharr-host-rewrite
+      kind: Rule
+      services:
+        - name: watcharr-vpn
+          kind: Service
+          scheme: https
+          port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: watcharr-redirect-list
+spec:
+  redirectRegex:
+    regex: "^https?://([^/]+)/$"
+    replacement: "https://watchlist.lab.com/lists/2/user01"
+    permanent: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: watcharr-vpn
+spec:
+  type: ExternalName
+  externalName: watcharr.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: watcharr-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: watcharr.vpn.lab.com

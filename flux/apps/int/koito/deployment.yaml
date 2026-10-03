@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: koito
+  labels:
+    app.kubernetes.io/name: koito
+    app.kubernetes.io/instance: koito
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: koito
+      app.kubernetes.io/instance: koito
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: koito
+        app.kubernetes.io/instance: koito
+    spec:
+      containers:
+        - name: koito
+          image: gabehf/koito:v0.3.1
+          env:
+            - name: KOITO_DEFAULT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: koito-db-secret
+                  key: KOITO_DEFAULT_USERNAME
+            - name: KOITO_DEFAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: koito-db-secret
+                  key: KOITO_DEFAULT_PASSWORD
+            - name: KOITO_SQLITE_ENABLED
+              value: "true"
+            - name: KOITO_DEFAULT_THEME
+              value: "black"
+          ports:
+            - containerPort: 4110
+              name: http
+          volumeMounts:
+            - mountPath: /etc/koito
+              name: koito-data
+              subPath: koito
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          startupProbe:
+            httpGet:
+              path: /
+              port: 4110
+            failureThreshold: 30
+            periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4110
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4110
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: koito-data
+          persistentVolumeClaim:
+            claimName: koito-pvc

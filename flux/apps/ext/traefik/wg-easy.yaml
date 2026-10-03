@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wg-easy-ui
+spec:
+  type: ExternalName
+  externalName: 127.0.0.1
+  ports:
+    - port: 51821
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: wg-easy-ui
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`headscale-wg.lab.com`)
+      middlewares:
+        - name: bouncer
+        - name: authelia-auth
+      kind: Rule
+      services:
+        - name: wg-easy-ui
+          port: 51821
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert

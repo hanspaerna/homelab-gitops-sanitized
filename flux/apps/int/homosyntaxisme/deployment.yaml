@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homosyntaxisme
+  labels:
+    app: homosyntaxisme
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homosyntaxisme
+  template:
+    metadata:
+      labels:
+        app: homosyntaxisme
+    spec:
+      containers:
+        - name: homosyntaxisme
+          image: git.vpn.lab.com/user01/homosyntaxisme:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu: 200m
+            requests:
+              cpu: 100m
+              memory: 128Mi
