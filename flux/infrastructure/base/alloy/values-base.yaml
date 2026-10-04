@@ -1,0 +1,7 @@
+# Grafana Alloy - log collection for VictoriaLogs
+# Config managed via Kustomize ConfigMap
+
+alloy:
+  configMap:
+    create: false
+    name: alloy-config

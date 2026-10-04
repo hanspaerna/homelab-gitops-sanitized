@@ -1,0 +1,47 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: copyparty-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # for obvious security reasons, only shared files and folders should be available from the external internet
+    #
+    # NB!
+    # /?ls is added as an allowed exception (be careful: ONLY root path should be allowed, not /books, or anything else)
+    # to get rid of 404 when playing the last audio in folder with default media player settings (cannot be changed via config)
+    - match: Host(`filesharing.lab.com`) && (PathRegexp(`^/shared/.+`) || PathPrefix(`/.cpr/`) || (PathRegexp(`^/$`) && Query(`ls`)))
+      middlewares:
+        - name: bouncer
+        - name: copyparty-host-rewrite
+      kind: Rule
+      services:
+        - name: copyparty-vpn
+          kind: Service
+          scheme: https
+          port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: copyparty-vpn
+spec:
+  type: ExternalName
+  externalName: drive.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: copyparty-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: drive.vpn.lab.com
+      Origin: "https://drive.vpn.lab.com" # the only way to avoid CORS error in Copyparty when accessed via two reverse proxies

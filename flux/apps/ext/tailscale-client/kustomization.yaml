@@ -1,0 +1,28 @@
+namespace: tailscale-client
+
+resources:
+  - ../../base/tailscale-client/
+
+patches:
+  - target:
+      kind: Deployment
+      name: tailscale-client
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: tailscale-client
+      spec:
+        template:
+          spec:
+            containers:
+              - name: tailscale
+                env:
+                  - name: TS_HOSTNAME
+                    value: "k3s-ext"
+                  - name: TS_ROUTES
+                    value: "10.45.100.100/32,10.8.0.0/24" # expose Cluster-IP of Blocky DNS and wg-easy devices to Tailnet
+                  # snat-subnet-router=false preserves original source IPs behind the router
+                  # NB! With TS_AUTH_ONCE=true, extra args will have an effect only once
+                  - name: TS_EXTRA_ARGS
+                    value: "--login-server=https://headscale.lab.com --snat-subnet-routes=false --accept-routes --accept-dns=true"

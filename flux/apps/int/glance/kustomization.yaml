@@ -1,0 +1,12 @@
+namespace: glance
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - services.yaml
+  - httproute.yaml
+
+configMapGenerator:
+  - name: glance-config
+    files:
+      - glance.yml
