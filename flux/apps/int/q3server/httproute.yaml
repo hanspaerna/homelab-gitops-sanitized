@@ -1,0 +1,38 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: q3js-master-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "q3master.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: q3js-master-svc
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: q3js-website-route
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-int
+  hostnames:
+    - "q3.vpn.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: q3js-website-svc
+          port: 3000

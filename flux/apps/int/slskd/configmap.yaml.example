@@ -1,0 +1,28 @@
+# Example:
+#    remote_configuration: true
+#    soulseek:
+#      # listening port will be replaced dynamically on startup
+#      listen_port: 55555
+#      description: test
+#      picture: /app/avatar.jpg
+#    directories:
+#      incomplete: /downloads/soulseek/incomplete
+#      downloads: /downloads/soulseek
+#    shares:
+#      directories:
+#        - /shares/music
+#        - /shares/books
+#      filters:
+#        - \.ini$
+#        - Thumbs.db$
+#        - \.DS_Store$
+#        - metadata.db$
+#        - metadata_db_prefs_backup.json$
+#    rooms:
+#    integrations:
+#      webhooks:
+#        ntfy:
+#          on:
+#            - PrivateMessageReceived
+#          call:
+#            url: http://localhost:3210/webhook

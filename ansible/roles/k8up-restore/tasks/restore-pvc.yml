@@ -1,0 +1,98 @@
+- name: "{{ namespace }} - {{ pvc.metadata.name }} - Clear PVC"
+  vars:
+    pod_spec:
+      spec:
+        containers:
+          - name: cleanup
+            image: busybox
+            command: ["sh", "-c", "rm -rf /data/* /data/.* 2>/dev/null; echo done"]
+            volumeMounts:
+              - name: data
+                mountPath: /data
+        volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: "{{ pvc.metadata.name }}"
+  command: >
+    kubectl run cleanup-{{ pvc.metadata.name }} -n {{ namespace }}
+    --image=busybox
+    --restart=Never
+    --overrides='{{ pod_spec | to_json }}'
+    --kubeconfig {{ kubeconfig_path }}
+
+- name: "{{ namespace }} - {{ pvc.metadata.name }} - Wait for cleanup pods"
+  command: kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/cleanup-{{ pvc.metadata.name }} -n {{ namespace }} --timeout=120s --kubeconfig {{ kubeconfig_path }}
+  ignore_errors: true
+
+- name: "{{ namespace }} - {{ pvc.metadata.name }} - Delete cleanup pods"
+  command: kubectl delete pod cleanup-{{ pvc.metadata.name }} -n {{ namespace }} --kubeconfig {{ kubeconfig_path }}
+  ignore_errors: true
+
+- name: "{{ namespace }} - {{ pvc.metadata.name }} - Delete old restore Job if exists"
+  command: >
+    kubectl delete job restore-{{ pvc.metadata.name }} -n {{ namespace }}
+  ignore_errors: true
+  no_log: true
+
+- name: "{{ namespace }} - {{ pvc.metadata.name }} - Create restore Job"
+  command: >
+    kubectl apply -f - --kubeconfig {{ kubeconfig_path }}
+  args:
+    stdin: |
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: restore-{{ pvc.metadata.name }}
+        namespace: {{ namespace }}
+        labels:
+          k8up.io/type: restore
+        annotations:
+          kustomize.toolkit.fluxcd.io/force: enabled
+      spec:
+        completions: 1
+        parallelism: 1
+        # The Job must stay, otherwise Flux will re-create it regularly
+        # ttlSecondsAfterFinished:
+        template:
+          spec:
+            containers:
+              - command:
+                  - /scripts/restore-command.sh
+                image: ghcr.io/k8up-io/k8up:v2.13.1
+                imagePullPolicy: IfNotPresent
+                name: restore-{{ pvc.metadata.name }}
+                securityContext:
+                  runAsUser: 0
+                env:
+                  - name: VOLUME_NAMESPACE
+                    value: {{ namespace }}
+                  - name: VOLUME_NAME
+                    value: {{ pvc.metadata.name }}
+                  - name: SNAPSHOT
+                    value: latest
+                envFrom:
+                  - secretRef:
+                      name: k8up-secret
+                volumeMounts:
+                  - name: scripts
+                    mountPath: "/scripts"
+                  - name: data
+                    mountPath: "/data/{{ pvc.metadata.name }}"
+            volumes:
+              - name: scripts
+                configMap:
+                  name: restore-scripts
+                  defaultMode: 0555
+              - name: data
+                persistentVolumeClaim:
+                  claimName: {{ pvc.metadata.name }}
+            restartPolicy: OnFailure
+
+- name: "{{ namespace }} - {{ pvc.metadata.name }} - Wait for restore job"
+  shell: |
+    kubectl get jobs -n {{ namespace }} -l k8up.io/type=restore -o json --kubeconfig {{ kubeconfig_path }} | \
+    jq -e '.items[] | select(.status.succeeded == 1)' > /dev/null
+  register: restore_job
+  until: restore_job.rc == 0
+  retries: 60
+  delay: 10

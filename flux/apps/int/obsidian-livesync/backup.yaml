@@ -1,0 +1,25 @@
+---
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: backup-schedule
+spec:
+  backend:
+    rest:
+      url: http://rest.restic-backup.svc.cluster.local:8000/obsidian-livesync # must match the namespace!
+    repoPasswordSecretRef:
+      name: k8up-secret
+      key: RESTIC_PASSWORD
+  podSecurityContext:
+    fsGroup: 0
+    runAsUser: 0
+  backup:
+    schedule: "45 1 * * *"
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 1
+  prune:
+    schedule: "0 3 * * 0"
+    retention:
+      keepDaily: 7
+      keepWeekly: 4
+      keepMonthly: 3

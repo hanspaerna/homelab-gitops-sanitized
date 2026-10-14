@@ -1,0 +1,30 @@
+all:
+  vars:
+    ansible_user: ${cloud_init_username}
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no
+    k3s_version: ${k3s_version}
+    k3s_token: ${k3s_token}
+    github_username: ${github_username}
+    github_token: ${github_token}
+
+    tailnet_ipv4_k3s_ext: "100.64.0.10"
+    tailnet_ipv6_k3s_ext: "fd7a:115c:a1e0::a"
+
+    tailnet_ipv4_k3s_int: "100.64.0.11"
+    tailnet_ipv6_k3s_int: "fd7a:115c:a1e0::b"
+
+k3s:
+  children:
+    control_plane:
+      hosts:
+%{ for index, hostname in control_plane_hostnames ~}
+        ${hostname}:
+          ansible_host: ${control_plane_ips[index]}
+%{endfor ~}
+
+    control_plane_external:
+      hosts:
+        ${control_plane_external_hostname}:
+          ansible_host: ${control_plane_external_ip}
+          ipv6_network_range: "${control_plane_external_ipv6_network}"
+

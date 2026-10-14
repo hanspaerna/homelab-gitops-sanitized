@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blocky
+spec:
+  selector:
+    app.kubernetes.io/name: blocky
+  type: ClusterIP
+  clusterIP: 10.45.100.100 # this DNS server will be specified in Headscale, so it needs to be predictable and static
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+      protocol: TCP
+    - name: dns-tcp
+      port: 53
+      targetPort: dns-tcp
+      protocol: TCP
+    - name: dns-udp
+      port: 53
+      targetPort: dns-udp
+      protocol: UDP

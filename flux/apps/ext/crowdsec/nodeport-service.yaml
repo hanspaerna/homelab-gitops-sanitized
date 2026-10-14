@@ -1,0 +1,15 @@
+# required by crowdsec firewall bouncer running on host
+apiVersion: v1
+kind: Service
+metadata:
+  name: crowdsec-lapi-nodeport-svc
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30800
+  selector:
+    k8s-app: crowdsec
+    type: lapi
+    version: v1

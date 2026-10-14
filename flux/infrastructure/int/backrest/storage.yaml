@@ -1,0 +1,345 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-k3s-volumes-bp-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#k3s-volumes-bp#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/k3s-volumes-bp
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-books-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#books#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/books
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-camera-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#camera#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/camera
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-games-bp-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#games-bp#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/games/games-bp
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-movies-bp-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#movies-bp#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/movies/movies-bp
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-music-bp-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#music-bp#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/music/music-bp
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-special-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#special#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/special
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-private-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#private#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/private
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-series-bp-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#series-bp#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/series/series-bp
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backrest-videos-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#videos#backrest"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/videos
+  mountOptions:
+    - nfsvers=4.1
+
+
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-volumes-bp-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-k3s-volumes-bp-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-books-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-books-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-camera-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-camera-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-games-bp-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-games-bp-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-movies-bp-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-movies-bp-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-music-bp-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-music-bp-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-special-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-special-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-private-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-private-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-series-bp-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-series-bp-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-videos-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: backrest-videos-pv
+  storageClassName: ""
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: backrest-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

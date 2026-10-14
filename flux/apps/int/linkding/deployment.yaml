@@ -1,0 +1,44 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linkding
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: linkding
+  template:
+    metadata:
+      labels:
+        app: linkding
+    spec:
+      containers:
+        - name: linkding
+          image: sissbruecker/linkding:1.45.0-plus
+          ports:
+            - containerPort: 9090
+              name: http
+          env:
+            - name: LD_SUPERUSER_NAME
+              valueFrom:
+                secretKeyRef:
+                  key: superUserName
+                  name: linkding-secret
+            - name: LD_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: superUserPassword
+                  name: linkding-secret
+            # the default value points to Google services, so let's use something less terrible
+            - name: LD_FAVICON_PROVIDER
+              value: "https://icons.duckduckgo.com/ip3/{domain}.ico"
+          volumeMounts:
+            - name: linkding-data
+              mountPath: /etc/linkding/data
+      volumes:
+        - name: linkding-data
+          persistentVolumeClaim:
+            claimName: linkding-data

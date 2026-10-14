@@ -1,0 +1,4 @@
+namespace: victoria-logs
+
+resources:
+  - ../../base/victoria-logs/
