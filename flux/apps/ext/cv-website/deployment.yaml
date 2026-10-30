@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cv-website
+  labels:
+    app: cv-website
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cv-website
+  template:
+    metadata:
+      labels:
+        app: cv-website
+    spec:
+      containers:
+        - name: cv-website
+          image: git.vpn.lab.com/user01/cv-website:latest
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: VITE_FIRST_NAME
+              value: "Hans"
+            - name: VITE_LAST_NAME
+              value: "Pärna"
+            - name: VITE_OCCUPATION
+              value: "Senior Backend Engineer"
+            - name: VITE_CITY
+              value: "Berlin, Germany"
+            - name: VITE_PHONE
+              value: "<phone_number>"
+            - name: VITE_EMAIL
+              value: "admin@protonmail.ch"
+            - name: VITE_GITHUB
+              value: "https://github.com/hanspaerna"
+            - name: VITE_LINKEDIN
+              value: "https://linkedin.com/in/hans-paerna"
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 200m
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: pages
+              mountPath: /md/
+      volumes:
+        - name: pages
+          configMap:
+            name: pages

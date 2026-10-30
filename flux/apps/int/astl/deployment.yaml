@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: astl
+  labels:
+    app: astl
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: astl
+  template:
+    metadata:
+      labels:
+        app: astl
+    spec:
+      containers:
+        - name: astl
+          image: git.vpn.lab.com/user01/astl:1.47.1-amd64
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 200m
+            requests:
+              cpu: 100m
+              memory: 128Mi

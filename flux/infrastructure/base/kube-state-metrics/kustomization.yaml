@@ -1,0 +1,5 @@
+namespace: kube-state-metrics
+
+resources:
+  - manifest.readonly.yaml
+  - namespace.yaml

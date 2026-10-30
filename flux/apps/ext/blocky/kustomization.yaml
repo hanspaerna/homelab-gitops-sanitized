@@ -1,0 +1,12 @@
+namespace: blocky
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - storage.yaml
+  - svc.yaml
+
+configMapGenerator:
+  - name: blocky-config
+    files:
+      - config.yml

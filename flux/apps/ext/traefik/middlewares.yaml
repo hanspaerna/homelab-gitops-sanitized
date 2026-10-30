@@ -1,0 +1,27 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authelia-auth
+  namespace: traefik-ext
+spec:
+  forwardAuth:
+    address: "http://authelia.authelia.svc.cluster.local:80/api/authz/forward-auth"
+    trustForwardHeader: true
+    authResponseHeaders:
+      - "Remote-User"
+      - "Remote-Groups"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: bouncer
+  namespace: traefik-ext
+spec:
+  plugin:
+    bouncer:
+      enabled: true
+      crowdsecMode: stream
+#      logLevel: DEBUG
+      crowdsecLapiScheme: http
+      crowdsecLapiHost: crowdsec-service.crowdsec.svc.cluster.local:8080
+      crowdsecLapiKeyFile: /lapisecret/key
