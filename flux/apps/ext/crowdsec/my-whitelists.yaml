@@ -1,0 +1,10 @@
+name: my/whitelists
+description: "Whitelist legitimate sources"
+whitelist:
+  reason: "Legitimate services with unusual traffic patterns"
+  expression:
+    # there were problems with NetBird VPN clients getting banned due to 403's, but let's keep it for Headscale as well
+    # TODO: do I really need it since the migration from NetBird to Headscale?
+    - "evt.Meta.target_fqdn == 'headscale.lab.com' && evt.Meta.http_status == '403'"
+    # Q3JS clients make lots of HEAD requests when comparing local game files with remote; this is fine
+    - "evt.Meta.target_fqdn == 'q3.lab.com' && evt.Meta.http_verb == 'HEAD'"

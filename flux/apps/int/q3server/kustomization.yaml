@@ -1,0 +1,7 @@
+namespace: q3server
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - httproute.yaml
+  - secrets.yaml

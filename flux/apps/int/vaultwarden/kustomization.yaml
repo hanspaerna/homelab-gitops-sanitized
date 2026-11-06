@@ -1,0 +1,12 @@
+namespace: vaultwarden
+
+resources:
+  - ../../../shared-resources/k8up-secret/
+  - ../../../shared-resources/k8up-prebackup/
+  - namespace.yaml
+  - deployment.yaml
+  - pvc.yaml
+  - svc.yaml
+  - secrets.yaml
+  - httproute.yaml
+  - backup.yaml

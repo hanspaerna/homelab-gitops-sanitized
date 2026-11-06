@@ -1,0 +1,14 @@
+namespace: obsidian-livesync
+
+resources:
+  - ../../../shared-resources/k8up-secret/
+  - ../../../shared-resources/k8up-prebackup/
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - secrets.yaml
+  - storage.yaml
+  - httproute.yaml
+  - scripts.yaml
+  - backup.yaml
+  - init-job.yaml

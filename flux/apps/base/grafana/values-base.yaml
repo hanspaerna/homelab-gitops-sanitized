@@ -1,0 +1,14 @@
+# Base values for Grafana
+# Minimal structural config only - customization via Kustomize overlays
+
+# Disable test pod
+testFramework:
+  enabled: false
+
+# Enable sidecar for dashboard/datasource provisioning via ConfigMaps
+sidecar:
+  dashboards:
+    enabled: true
+  datasources:
+    enabled: true
+

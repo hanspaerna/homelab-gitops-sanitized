@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale-client
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tailscale-client
+  template:
+    metadata:
+      labels:
+        app: tailscale-client
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: tailscale
+          image: tailscale/tailscale:v1.98.4
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]
+          env:
+            - name: TS_AUTH_ONCE
+              value: "true"
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: headscale-setup-key # not a part of the repo, should be applied to cluster with Ansible (headscale-setup.yml)
+                  key: key
+                  optional: true
+            # prevent containerboot from touching Kubernetes API
+            - name: TS_KUBE_SECRET
+              value: ""
+            - name: TS_STATE_DIR
+              value: "/var/lib/tailscale"
+            # force tailscale to use kernel networking instead of userspace; there will be no access from cluster node without this
+            - name: TS_USERSPACE
+              value: "false"
+            # NB! With TS_AUTH_ONCE=true, extra args will have an effect only once
+            - name: TS_EXTRA_ARGS
+              value: "--login-server=https://headscale.lab.com --accept-routes --accept-dns=true"
+            - name: TS_ENABLE_HEALTH_CHECK
+              value: "true"
+          readinessProbe:
+            exec:
+              command: ["wget", "--spider", "-q", "http://127.0.0.1:9002/healthz"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: tailscale-client-data
+              mountPath: /var/lib/tailscale
+            - name: tun-device
+              mountPath: /dev/net/tun
+
+      volumes:
+        - name: tailscale-client-data
+          persistentVolumeClaim:
+            claimName: tailscale-client-data
+        - name: tun-device
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice

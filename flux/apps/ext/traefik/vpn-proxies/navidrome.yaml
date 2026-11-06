@@ -1,0 +1,42 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: navidrome-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`navidrome.lab.com`)
+      middlewares:
+      - name: bouncer
+      - name: authelia-auth
+      - name: navidrome-host-rewrite
+      kind: Rule
+      services:
+      - name: navidrome-vpn
+        kind: Service
+        scheme: https
+        port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navidrome-vpn
+spec:
+  type: ExternalName
+  externalName: navidrome.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: navidrome-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: navidrome.vpn.lab.com

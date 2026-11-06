@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grimmory
+  labels:
+    app.kubernetes.io/name: grimmory
+    app.kubernetes.io/instance: grimmory
+spec:
+  selector:
+    app.kubernetes.io/name: grimmory
+    app.kubernetes.io/instance: grimmory
+  type: ClusterIP
+  ports:
+    - port: 6060
+      name: http
+      targetPort: http
+      protocol: TCP

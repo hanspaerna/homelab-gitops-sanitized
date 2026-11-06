@@ -1,0 +1,128 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stub-website
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stub-website
+  namespace: stub-website
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stub-website
+  template:
+    metadata:
+      labels:
+        app: stub-website
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine3.23
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: stub-website-volume
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: stub-website-volume
+          persistentVolumeClaim:
+            claimName: stub-website-pvc
+        - name: git-sync-volume
+          emptyDir: {} # temporary workspace for git-sync
+      initContainers:
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.1.0
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - |
+              /git-sync --repo=https://github.com/hanspaerna/HOMELAB-gitops.git \
+                       --branch=main \
+                       --root=/git \
+                       --link=HOMELAB-gitops \
+                       --one-time \
+                       --username=$(GIT_USERNAME) \
+                       --password=$(GIT_PASSWORD) && \
+              cp -r /git/HOMELAB-gitops/container-data/ext/stub-website/* /destination
+          env:
+            - name: GIT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: git-secret
+                  key: username
+            - name: GIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: git-secret
+                  key: password
+          volumeMounts:
+            - name: git-sync-volume
+              mountPath: /git
+            - name: stub-website-volume
+              mountPath: /destination
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stub-website-pvc
+  namespace: stub-website
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stub-website
+  namespace: stub-website
+spec:
+  selector:
+    app: stub-website
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: middleware-chain
+  namespace: stub-website
+spec:
+  chain:
+    middlewares:
+      - name: bouncer
+        namespace: traefik-ext
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: stub-website-route
+  namespace: stub-website
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik-ext
+  hostnames:
+    - "lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: middleware-chain
+      backendRefs:
+        - name: stub-website
+          port: 80

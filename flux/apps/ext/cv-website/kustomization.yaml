@@ -1,0 +1,16 @@
+namespace: cv-website
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml
+
+configMapGenerator:
+  - name: pages
+    files:
+      - pages/ABOUT.md
+      - pages/EXPERIENCE.md
+      - pages/PERSONAL_PROJECTS.md
+      - pages/CV.md
+      - pages/FEEDBACK.md

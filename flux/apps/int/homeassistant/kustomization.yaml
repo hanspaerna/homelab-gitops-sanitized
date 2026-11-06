@@ -1,0 +1,13 @@
+namespace: homeassistant
+
+resources:
+  - ../../../shared-resources/k8up-secret/
+  - ../../../shared-resources/k8up-prebackup/
+  - namespace.yaml
+  - storage.yaml
+  - deployment.yaml
+  - backup.yaml
+  - mosquitto.yaml
+  - zigbee2mqtt.yaml
+  - bifrost.yaml
+  - frigate.yaml

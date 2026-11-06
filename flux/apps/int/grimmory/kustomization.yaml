@@ -1,0 +1,12 @@
+namespace: grimmory
+
+resources:
+  - ../../../shared-resources/k8up-secret/
+  - ../../../shared-resources/k8up-prebackup/
+  - namespace.yaml
+  - deployment.yaml
+  - httproute.yaml
+  - storage.yaml
+  - svc.yaml
+  - backup.yaml
+  - secrets.yaml

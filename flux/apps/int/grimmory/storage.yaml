@@ -1,0 +1,82 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: grimmory-books-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#books#grimmory"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/books
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: grimmory-downloads-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: ""
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: "pve.lan#downloads#grimmory"
+    volumeAttributes:
+      server: pve.lan
+      share: /nethescurial/downloads
+  mountOptions:
+    - nfsvers=4.1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: books-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: grimmory-books-pv
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: config-pvc
+  labels:
+    app.kubernetes.io/name: grimmory
+    app.kubernetes.io/instance: grimmory
+  annotations:
+    k8up.io/backup: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bookdrop-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: grimmory-downloads-pv
+  storageClassName: ""
