@@ -1,0 +1,9 @@
+namespace: navidrome
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml
+  - storage.yaml
+  - backup.yaml

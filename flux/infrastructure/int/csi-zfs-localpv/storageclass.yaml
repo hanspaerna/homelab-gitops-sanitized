@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-zfspv
+parameters:
+  shared: "yes"
+  recordsize: "128k"
+  compression: "lz4"
+  dedup: "off"
+  fstype: "zfs"
+  poolname: "podzfs"
+provisioner: zfs.csi.openebs.io

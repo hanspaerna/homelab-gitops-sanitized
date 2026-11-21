@@ -1,0 +1,4 @@
+resources:
+  - manifest.readonly.yaml
+  - namespace.yaml
+  - config.yaml

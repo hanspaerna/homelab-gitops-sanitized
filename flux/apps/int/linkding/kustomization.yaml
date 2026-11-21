@@ -1,0 +1,9 @@
+namespace: linkding
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - storage.yaml
+  - svc.yaml
+  - httproute.yaml
+  - secrets.yaml

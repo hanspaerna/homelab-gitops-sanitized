@@ -1,0 +1,41 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: homosyntaxisme-vpn-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`homosyntaxisme.lab.com`)
+      middlewares:
+        - name: bouncer
+        - name: homosyntaxisme-host-rewrite
+      kind: Rule
+      services:
+        - name: homosyntaxisme-vpn
+          kind: Service
+          scheme: https
+          port: 443
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homosyntaxisme-vpn
+spec:
+  type: ExternalName
+  externalName: homosyntaxisme.vpn.lab.com
+  ports:
+    - name: https
+      port: 443
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: homosyntaxisme-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: homosyntaxisme.vpn.lab.com

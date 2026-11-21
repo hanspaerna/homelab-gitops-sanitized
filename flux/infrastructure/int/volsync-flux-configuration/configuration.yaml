@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: volsync-configuration
+data:
+  VOLSYNC_REPO_BASE: "rest:http://rest.restic-backup.svc.cluster.local:8000"
+  VOLSYNC_SCHEDULE: "45 1 * * *"
+  VOLSYNC_PRUNE_DAYS: "14"
+  VOLSYNC_RETAIN_DAILY: "7"
+  VOLSYNC_RETAIN_WEEKLY: "4"

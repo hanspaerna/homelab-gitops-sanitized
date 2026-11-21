@@ -1,0 +1,9 @@
+namespace: forgejo
+
+resources:
+  - namespace.yaml
+  - storage.yaml
+  - deployment.yaml
+  - svc.yaml
+  - secrets.yaml
+  - httproute.yaml

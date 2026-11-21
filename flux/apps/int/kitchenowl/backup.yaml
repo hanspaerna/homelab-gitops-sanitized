@@ -1,0 +1,38 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: volsync-repo
+stringData:
+  RESTIC_REPOSITORY: ${VOLSYNC_REPO_BASE}/kitchenowl
+  RESTIC_PASSWORD: ${VOLSYNC_RESTIC_PASSWORD}
+---
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync-kitchenowl
+spec:
+  sourcePVC: kitchenowl-data-pvc
+  trigger:
+    schedule: ${VOLSYNC_SCHEDULE}
+  restic:
+    repository: volsync-repo
+    copyMethod: Snapshot
+    pruneIntervalDays: ${VOLSYNC_PRUNE_DAYS}
+    retain:
+      daily: ${VOLSYNC_RETAIN_DAILY}
+      weekly: ${VOLSYNC_RETAIN_WEEKLY}
+---
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync-repldest
+spec:
+  trigger:
+    manual: restore-once
+  restic:
+    repository: volsync-repo
+    storageClassName: csi-zfspv
+    copyMethod: Snapshot
+    capacity: 5Gi
+    accessModes: ["ReadWriteOnce"]

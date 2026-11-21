@@ -1,0 +1,9 @@
+namespace: jellyfin
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - storage.yaml
+  - httproute.yaml
+  - backup.yaml

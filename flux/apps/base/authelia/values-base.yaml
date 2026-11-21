@@ -1,0 +1,5 @@
+configMap:
+  telemetry:
+    metrics:
+      enabled: true
+      port: 9959

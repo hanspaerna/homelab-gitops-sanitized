@@ -1,0 +1,5 @@
+resources:
+  - ../../base/cert-manager/
+  - ../../base/cert-manager-webhook-hetzner/
+  - resources.yaml
+  - ../../../shared-resources/hetzner-secret/

@@ -1,0 +1,7 @@
+namespace: csi-zfs-localpv
+
+resources:
+  - ../../base/csi-zfs-localpv/
+  - namespace.yaml
+  - storageclass.yaml
+  - volumesnapshotclass.yaml

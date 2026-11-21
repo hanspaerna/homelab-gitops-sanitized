@@ -1,0 +1,5 @@
+namespace: flux-system
+
+resources:
+  - secret.yaml
+  - configuration.yaml
