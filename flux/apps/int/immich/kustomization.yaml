@@ -1,0 +1,10 @@
+namespace: immich
+
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - storage.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml
+  - backup.yaml

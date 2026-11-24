@@ -1,0 +1,5 @@
+namespace: volsync
+
+resources:
+  - ../../base/volsync/
+  - namespace.yaml

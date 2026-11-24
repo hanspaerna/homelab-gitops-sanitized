@@ -1,0 +1,73 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: couchdb-initialize
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: couchdb-check-db-exists
+        image: curlimages/curl:8.18.0
+        env:
+          - name: COUCHDB_USER
+            valueFrom:
+              secretKeyRef:
+                name: couchdb-secret
+                key: username
+          - name: COUCHDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: couchdb-secret
+                key: password
+        command:
+          - /bin/sh
+          - -c
+          - |
+            set -e
+
+            COUCHDB_URL="http://obsidian-couchdb-svc:5984"
+            DB_NAME="obsidian"
+
+            # Wait until CouchDB answers (000 = not reachable yet)
+            until CODE=$(curl -s -o /dev/null -w '%{http_code}' "$COUCHDB_URL/_up"); [ "$CODE" = "200" ] || [ "$CODE" = "401" ]; do
+              echo "Waiting for CouchDB at $COUCHDB_URL (last code: $CODE)..."
+              sleep 2
+            done
+
+            if [ "$CODE" = "401" ]; then
+              echo "Auth already required, instance was initialized (restored). Nothing to do."
+              exit 0
+            fi
+
+            echo "Checking if database '$DB_NAME' exists..."
+
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$COUCHDB_URL/$DB_NAME")
+
+            if [ "$STATUS" = "200" ]; then
+              echo "Database '$DB_NAME' already exists. Nothing to do."
+              exit 0
+            fi
+
+            if [ "$STATUS" = "404" ]; then
+              echo "Database '$DB_NAME' does not exist. Running couchdb-init..."
+
+              export hostname=$COUCHDB_URL
+              export username=$COUCHDB_USER
+              export password=$COUCHDB_PASSWORD
+              sh /scripts/couchdb-init.sh
+              exit 0
+            fi
+
+            echo "Unexpected response from CouchDB: HTTP $STATUS"
+            exit 1
+        volumeMounts:
+          - name: script-volume
+            mountPath: /scripts
+      volumes:
+        - name: script-volume
+          configMap:
+            name: couchdb-scripts
+            defaultMode: 0755

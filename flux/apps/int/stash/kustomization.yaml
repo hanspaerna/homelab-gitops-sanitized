@@ -1,0 +1,9 @@
+namespace: stash
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - storage.yaml
+  - svc.yaml
+  - httproute.yaml
+  - backup.yaml

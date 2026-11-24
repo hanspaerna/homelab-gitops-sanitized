@@ -1,0 +1,347 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: q3js-server
+  labels:
+    app: q3js-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate 
+  selector:
+    matchLabels:
+      app: q3js-server
+  template:
+    metadata:
+      labels:
+        app: q3js-server
+    spec:
+      hostNetwork: true
+      containers:
+        - name: q3js-server
+          image: git.vpn.lab.com/user01/q3js-server:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 27960 # a regular Q3 Arena server
+              protocol: UDP
+            - name: http
+              containerPort: 27961 # a web socket for web clients
+              protocol: TCP
+          env:
+            - name: WS_PORT
+              value: "27961"
+            - name: MASTER_SERVER_BASE
+              value: "https://q3master.lab.com"
+            - name: SECONDARY_MASTER_SERVER_BASE
+              value: "https://master.q3js.com"
+            - name: PUBLISH_HOST
+              value: "q3srv.lab.com"
+            - name: PUBLISH_PORT
+              value: "443"
+            - name: SECURE
+              value: "true"
+            - name: FS_GAME
+              value: "cpma" # should be explicitly set to let users with standalone client to auto-download maps (ensure clients have 'seta cl_allowdownload 1' in their cfg file)
+            - name: API_TOKEN # API token of master service, required by mutations like /api/events
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: MASTER_API_TOKEN
+            - name: LOCATION
+              value: "Berlin, Germany"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1024Mi"
+          volumeMounts:
+            - name: data-pvc
+              mountPath: /server/baseq3
+              subPath: baseq3
+            - name: data-pvc
+              mountPath: /server/cpma
+              subPath: cpma
+            - name: configs
+              mountPath: /server/cpma/autoexec.cfg
+              subPath: autoexec.cfg # never use any other name, better not to intrude into the execution order of these cfg files (or it silently fails)
+            - name: configs-cpma-mapmodes
+              mountPath: /server/cpma/cfg-maps/mapmodes.txt
+              subPath: mapmodes.txt
+            - name: configs-cpma-maplist-ffa-cfg
+              mountPath: /server/cpma/cfg-maps/ffamaps.txt
+              subPath: ffamaps.txt
+            - name: configs-cpma-ffa-mode-cfg
+              mountPath: /server/cpma/modes/KOB_CPMDM.cfg
+              subPath: KOB_CPMDM.cfg
+            - name: configs-cpma-maplist-ctf-cfg
+              mountPath: /server/cpma/cfg-maps/ctfmaps.txt
+              subPath: ctfmaps.txt
+            - name: configs-cpma-ctf-mode-cfg
+              mountPath: /server/cpma/modes/KOB_CPMCTF.cfg
+              subPath: KOB_CPMCTF.cfg
+            - name: configs-cpma-maplist-tdm-cfg
+              mountPath: /server/cpma/cfg-maps/teammaps.txt
+              subPath: teammaps.txt
+            - name: configs-cpma-tdm-mode-cfg
+              mountPath: /server/cpma/modes/KOB_CPMTDM.cfg
+              subPath: KOB_CPMTDM.cfg
+            - name: data-pvc
+              mountPath: /server/persist
+              subPath: persist
+            - name: data-pvc
+              mountPath: /server/persist/stats
+              subPath: stats
+            - name: data-pvc
+              mountPath: /root/.local/share/Quake3/cpma/stats
+              subPath: stats
+      volumes:
+        - name: configs
+          configMap:
+            name: q3-server-cfg
+        - name: configs-cpma-mapmodes
+          configMap:
+            name: q3-server-cpma-mapmodes-cfg
+        - name: configs-cpma-ffa-mode-cfg
+          configMap:
+            name: q3-server-cpma-gamemode-ffa-cfg
+        - name: configs-cpma-maplist-ffa-cfg
+          configMap:
+            name: q3-server-maplist-ffa-cfg
+        - name: configs-cpma-ctf-mode-cfg
+          configMap:
+            name: q3-server-cpma-gamemode-ctf-cfg
+        - name: configs-cpma-tdm-mode-cfg
+          configMap:
+            name: q3-server-cpma-gamemode-tdm-cfg
+        - name: configs-cpma-maplist-ctf-cfg
+          configMap:
+            name: q3-server-maplist-ctf-cfg
+        - name: configs-cpma-maplist-tdm-cfg
+          configMap:
+            name: q3-server-maplist-tdm-cfg
+        - name: data-pvc
+          persistentVolumeClaim:
+            claimName: data-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: q3js-website
+  labels:
+    app: q3js-website
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: q3js-website
+  template:
+    metadata:
+      labels:
+        app: q3js-website
+    spec:
+      containers:
+        - name: q3js-website
+          image: git.vpn.lab.com/user01/q3js-website:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: MASTER_SERVER_URL
+              value: "https://q3master.lab.com"
+            - name: WEBSITE_TITLE
+              value: "Q3JS Server"
+            - name: APP_VERSION
+              value: "1.2.0"
+            - name: AUTH_URL
+              value: "https://q3.lab.com"
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: WEBSITE_OIDC_AUTH_SECRET
+            - name: AUTH_CLIENT_ID
+              value: "q3js-kob"
+            - name: AUTH_ISSUER
+              value: "https://auth.lab.com"
+            - name: AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: WEBSITE_OIDC_AUTH_CLIENT_SECRET
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: RCON_PASSWORD
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1024Mi"
+          volumeMounts:
+            - name: data-pvc
+              mountPath: /app/public/baseq3
+              subPath: baseq3
+            - name: data-pvc
+              mountPath: /app/public/cpma
+              subPath: cpma
+      volumes:
+        - name: data-pvc
+          persistentVolumeClaim:
+            claimName: data-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: q3js-tgbot
+  labels:
+    app: q3js-tgbot
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: q3js-tgbot
+  template:
+    metadata:
+      labels:
+        app: q3js-tgbot
+    spec:
+      containers:
+        - name: q3js-tgbot
+          image: git.vpn.lab.com/user01/q3js-tgbot:latest
+          imagePullPolicy: Always
+          env:
+            - name: Q3JS_SERVER_HOST
+              value: "q3srv.lab.com"
+            - name: Q3JS_WEBSITE_HOST
+              value: "q3.lab.com"
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: RCON_PASSWORD
+            - name: TELEGRAM_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: TELEGRAM_API_TOKEN
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: TELEGRAM_CHAT_ID
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: q3js-master
+  labels:
+    app: q3js-master
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate 
+  selector:
+    matchLabels:
+      app: q3js-master
+  template:
+    metadata:
+      labels:
+        app: q3js-master
+    spec:
+      initContainers:
+        - name: postgres
+          image: postgres:18
+          restartPolicy: Always
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: MASTER_POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: "postgres"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "100m"
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 10
+          volumeMounts:
+            - name: data-pvc
+              mountPath: /var/lib/postgresql
+              subPath: postgres
+      containers:
+        - name: q3js-master
+          image: git.vpn.lab.com/user01/q3js-master:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: Q3JS_DB_URL
+              value: "jdbc:postgresql://localhost:5432/postgres"
+            - name: Q3JS_DB_USER
+              value: "postgres"
+            - name: Q3JS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: MASTER_POSTGRES_PASSWORD
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: MASTER_API_TOKEN
+            - name: Q3JS_PROXY_CORS_ENABLED
+              value: "true"
+            - name: Q3JS_PROXY_CORS_ORIGINS
+              value: "http://localhost:3000,https://lab.com,https://q3.lab.com,https://q3master.lab.com,https://www.lab.com,https://q3srv.lab.com"
+            - name: Q3JS_RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: q3-secret
+                  key: RCON_PASSWORD
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "100m"
+              memory: "1024Mi"
+      volumes:
+      - name: data-pvc
+        persistentVolumeClaim:
+          claimName: data-pvc

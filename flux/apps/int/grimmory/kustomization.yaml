@@ -1,0 +1,10 @@
+namespace: grimmory
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - httproute.yaml
+  - storage.yaml
+  - svc.yaml
+  - secrets.yaml
+  - backup.yaml

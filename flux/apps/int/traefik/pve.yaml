@@ -1,0 +1,48 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: pve-transport
+spec:
+  insecureSkipVerify: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: pve-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`pve.vpn.lab.com`)
+      middlewares:
+      - name: pve-host-rewrite
+      kind: Rule
+      services:
+      - name: pve
+        kind: Service
+        scheme: https
+        port: 8006
+        serversTransport: pve-transport
+  tls:
+    secretName: letsencrypt-dns-wildcard-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pve
+spec:
+  type: ExternalName
+  externalName: pve.lan
+  ports:
+    - name: https
+      port: 8006
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: pve-host-rewrite
+spec:
+  headers:
+    customRequestHeaders:
+      Host: pve.lan

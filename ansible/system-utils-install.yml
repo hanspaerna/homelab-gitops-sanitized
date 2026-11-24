@@ -1,0 +1,206 @@
+---
+- name: Configure timezone
+  hosts: all
+  tags: timezone
+  tasks:
+    - name: Set timezone to Europe/Berlin
+      community.general.timezone:
+        name: Europe/Berlin
+
+- name: Disable password login
+  hosts: all
+  tags: disable_password
+  become: true
+  tasks:
+    - name: Disable SSH password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+        - { regexp: '^#?UsePAM', line: 'UsePAM no' }
+      notify: Restart sshd
+  handlers:
+    - name: Restart sshd
+      service:
+        name: sshd
+        state: restarted
+
+- name: Install System Utilities on all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install QEMU guest agent
+      ansible.builtin.apt:
+        name: qemu-guest-agent
+        state: present
+
+    - name: Start and enable QEMU guest agent service
+      ansible.builtin.systemd:
+        name: qemu-guest-agent
+        state: started
+        enabled: true
+
+    - name: Install vim # why not
+      ansible.builtin.apt:
+        name: vim
+        state: present
+
+    - name: Display system utilities status
+      ansible.builtin.debug:
+        msg: 'System utilities installed: QEMU guest agent and vim editor'
+
+- name: Increase inotify limits to fix an issue with K9S logs
+  hosts: all
+  tags: inotify
+  become: true
+  tasks:
+    - name: Increase max_user_watches
+      ansible.builtin.sysctl:
+        name: fs.inotify.max_user_watches
+        value: "262144"
+        sysctl_file: /etc/sysctl.d/99-inotify.conf
+        state: present
+        reload: true
+
+    - name: Increase max_user_instances
+      ansible.builtin.sysctl:
+        name: fs.inotify.max_user_instances
+        value: "512"
+        sysctl_file: /etc/sysctl.d/99-inotify.conf
+        state: present
+        reload: true
+
+- name: Install iGPU-specific utilities and drivers to the first worker
+  hosts: k3s-cp-1
+  tags: gpu
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install intel-gpu-tools
+      ansible.builtin.apt:
+        name: intel-gpu-tools
+        state: present
+
+    - name: Enable non-free and non-free-firmware repos
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/debian.sources
+        content: |
+          Types: deb
+          URIs: http://deb.debian.org/debian
+          Suites: trixie trixie-updates
+          Components: main contrib non-free non-free-firmware
+          Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://security.debian.org/debian-security
+          Suites: trixie-security
+          Components: main contrib non-free non-free-firmware
+          Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install non-free Intel driver and update kernel, firmware, and mesa
+      apt:
+        pkg:
+          - intel-media-va-driver-non-free
+          - linux-image-amd64
+          - firmware-intel-graphics
+          - firmware-intel-misc
+          - mesa-va-drivers
+        state: latest
+        update_cache: true
+      register: apt_result
+
+    - name: Reboot worker node
+      ansible.builtin.reboot:
+        msg: "Rebooting worker node in 5 seconds"
+      when: apt_result.changed
+
+- name: Create a single-SSD ZFS that will be used by k3s-int's cluster to store some pod volumes that need to be backed up as snapshots
+  hosts: k3s-cp-1
+  tags: podzfs
+  become: true
+  vars:
+    zpool_name: podzfs
+    zpool_device: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
+  tasks:
+    - name: Install kernel headers (required by zfs-dkms on Debian)
+      ansible.builtin.apt:
+        name: "linux-headers-{{ ansible_kernel }}"
+        state: present
+
+    - name: Install ZFS
+      ansible.builtin.apt:
+        name:
+          - zfs-dkms
+          - zfsutils-linux
+        state: present
+
+    - name: Load the ZFS kernel module
+      community.general.modprobe:
+        name: zfs
+        state: present
+
+    - name: Load zfs on boot
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/zfs.conf
+        content: "zfs\n"
+        mode: "0644"
+
+    - name: Check whether the pool is already imported
+      ansible.builtin.command: zpool list -H -o name {{ zpool_name }}
+      register: zpool_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Check that the disk exists
+      ansible.builtin.stat:
+        path: "{{ zpool_device }}"
+      register: zpool_dev
+      when: zpool_exists.rc != 0
+
+    - name: Fail early if the disk is missing
+      ansible.builtin.assert:
+        that: zpool_dev.stat.exists
+        fail_msg: "{{ zpool_device }} not found"
+      when: zpool_exists.rc != 0
+
+    - name: Create the pool
+      ansible.builtin.command: >
+        zpool create
+        -o ashift=12
+        -o autotrim=on
+        -O compression=lz4
+        -O atime=off
+        -O acltype=posixacl
+        -O xattr=sa
+        -O mountpoint=/{{ zpool_name }}
+        {{ zpool_name }} {{ zpool_device }}
+      when: zpool_exists.rc != 0
+
+    - name: Make sure the import and mount services are enabled
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+      loop:
+        - zfs-import-cache.service
+        - zfs-mount.service
+        - zfs.target

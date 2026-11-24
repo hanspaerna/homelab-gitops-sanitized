@@ -1,0 +1,12 @@
+namespace: obsidian-livesync
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - secrets.yaml
+  - storage.yaml
+  - httproute.yaml
+  - scripts.yaml
+  - init-job.yaml
+  - backup.yaml

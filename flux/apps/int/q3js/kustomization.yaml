@@ -1,0 +1,11 @@
+namespace: q3js
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - httproute.yaml
+  - secrets.yaml
+  - svc.yaml
+  - configmap.yaml
+  - storage.yaml
+  - backup.yaml

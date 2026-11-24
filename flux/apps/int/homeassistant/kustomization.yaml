@@ -1,0 +1,11 @@
+namespace: homeassistant
+
+resources:
+  - namespace.yaml
+  - storage.yaml
+  - deployment.yaml
+  - mosquitto.yaml
+  - zigbee2mqtt.yaml
+  - bifrost.yaml
+  - frigate.yaml
+  - backup.yaml

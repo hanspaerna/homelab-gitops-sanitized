@@ -1,0 +1,138 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-cfg
+data:
+  autoexec.cfg: |
+    set bot_enable 1
+    set dedicated 1
+    set sv_pure 0
+    set sv_maxclients 16
+    set bot_minplayers 0
+    set g_allowvote 0
+    set sv_hostname "Q3JS Server CPMA (Q3.lab.com)"
+    seta rconpassword "48152342"
+    set ref_password "48152342"
+    // set mode_start KOB_CPMCTF
+    // set mode_start KOB_CPMTDM
+    set mode_start KOB_CPMDM
+    set server_useMapModes 0
+    set map_rotate 1
+    map crescent // FFA default map; don't forget to install this map on server, otherwise the server will not run
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-cpma-mapmodes-cfg
+data:
+  mapmodes.txt: |
+    # You can assign a specific gamemode for each map in this file
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-cpma-gamemode-ffa-cfg
+data:
+  KOB_CPMDM.cfg: |
+    type 0
+    timelimit 10
+    overtime 0
+    instagib 0
+    hook 2
+    // items -BFG
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-cpma-gamemode-ctf-cfg
+data:
+  KOB_CPMCTF.cfg: |
+    type 4
+    hook 0
+    items -INVIS
+    items -SUIT
+    overtime 0
+    simplemega 1
+    timelimit 15
+    weaponrespawn 5
+    teamdamage 2
+    dropitems 2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-cpma-gamemode-tdm-cfg
+data:
+  KOB_CPMTDM.cfg: |
+    type 3
+    hook 2
+    items -INVIS
+    items -SUIT
+    overtime 0
+    simplemega 1
+    timelimit 15
+    weaponrespawn 5
+    teamdamage 3
+    dropitems 3
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-maplist-ffa-cfg
+data:
+  ffamaps.txt: |
+    pom_bots
+    zih_roof
+    rustgrad
+    rota3dm3
+    solitude
+    crescent
+    shibam
+    industrial
+    ikzdm1
+    scorpion
+    zih_gaj
+    zih_weirdf
+    q3gwdm2
+    solarae
+    phdm2
+    pro-ct3tourney2
+    trespass
+    houseby
+    phantq3dm3_rev
+    storm3tourney6
+    necro6
+    darkmeat
+    phantq3dm4
+    ct3dm4
+    chiropteradm
+    estatica
+    shkiper3dm1
+    ik3dm2
+    tabq1dm5
+    lun3_20b1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-maplist-ctf-cfg
+data:
+  ctfmaps.txt: |
+    13dream_xt
+    13circle_xt
+    q3ctfp22_final
+    q3flogger1
+    q3mrlctf2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: q3-server-maplist-tdm-cfg
+data:
+  teammaps.txt: |
+    13dream_xt
+    13circle_xt
+    q3ctfp22_final
+    q3flogger1
+    q3mrlctf2

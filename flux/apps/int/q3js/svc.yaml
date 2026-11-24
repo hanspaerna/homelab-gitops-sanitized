@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: q3js-website-svc
+spec:
+  selector:
+    app: q3js-website
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: q3js-master-svc
+spec:
+  selector:
+    app: q3js-master
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

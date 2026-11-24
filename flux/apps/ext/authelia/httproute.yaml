@@ -1,0 +1,39 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: middleware-chain
+  namespace: authelia
+spec:
+  chain:
+    middlewares:
+      - name: bouncer
+        namespace: traefik-ext
+
+      # obviously, never use auth middleware here
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: authelia
+  namespace: authelia
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      kind: Gateway
+      namespace: traefik-ext
+  hostnames:
+    - "auth.lab.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: authelia
+          port: 80
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: middleware-chain

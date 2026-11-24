@@ -1,0 +1,15 @@
+namespace: copyparty
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - svc.yaml
+  - httproute.yaml
+  - storage.yaml
+  - users-database.yaml
+  - backup.yaml
+
+configMapGenerator:
+  - name: copyparty-config
+    files:
+      - config.conf
